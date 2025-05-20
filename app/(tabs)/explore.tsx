@@ -1,110 +1,149 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Picker } from '@react-native-picker/picker';
+import dayjs from 'dayjs';
+import React, { useEffect, useState } from 'react';
+import { Dimensions, ScrollView, StyleSheet, Text } from 'react-native';
+import { LineChart } from 'react-native-chart-kit';
 
-import { Collapsible } from '@/components/Collapsible';
-import { ExternalLink } from '@/components/ExternalLink';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+type ProfitData = Record<string, number>;
 
-export default function TabTwoScreen() {
+export default function GraphScreen() {
+  const [profitData, setProfitData] = useState<ProfitData>({});
+  const [selectedMonth, setSelectedMonth] = useState<string>(dayjs().format('YYYY-MM')); // 例: "2025-05"
+  const [labels, setLabels] = useState<string[]>([]);
+  const [dataPoints, setDataPoints] = useState<number[]>([]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      const json = await AsyncStorage.getItem('profitData');
+      if (json) {
+        const allData: ProfitData = JSON.parse(json);
+        setProfitData(allData);
+      }
+    };
+    loadData();
+  }, []);
+
+  const [totalProfit, setTotalProfit] = useState<number>(0); // ← 追加
+
+  useEffect(() => {
+    const filteredDates = Object.keys(profitData)
+      .filter(date => date.startsWith(selectedMonth))
+      .sort();
+
+    const values = filteredDates.map(date => profitData[date]);
+
+    // ラベル（日付）
+    setLabels(filteredDates.map(d => d.slice(8)));
+
+    // ✅ 累積損益に変換
+    const cumulativeValues = values.reduce<number[]>((acc, val) => {
+      const last = acc.length > 0 ? acc[acc.length - 1] : 0;
+      acc.push(last + val);
+      return acc;
+    }, []);
+
+    setDataPoints(cumulativeValues);
+
+    // 合計損益（累積の最後の値）
+    const total = cumulativeValues[cumulativeValues.length - 1] || 0;
+    setTotalProfit(total);
+  }, [profitData, selectedMonth]);
+
+  const chartWidth = Math.max(labels.length * 50, Dimensions.get('window').width - 16);
+  // 年を指定（動的でもOK）
+  const year = 2025;
+
+  // 1月〜12月のPicker.Itemを生成
+  const monthItems = Array.from({ length: 12 }, (_, i) => {
+    const month = String(i + 1).padStart(2, '0'); // "01", "02", ..., "12"
+    const value = `${year}-${month}`;
+    return (
+      <Picker.Item
+        key={value}
+        label={`${year}年${month}月`}
+        value={value}
+      />
+    );
+  });
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Explore</ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image source={require('@/assets/images/react-logo.png')} style={{ alignSelf: 'center' }} />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Custom fonts">
-        <ThemedText>
-          Open <ThemedText type="defaultSemiBold">app/_layout.tsx</ThemedText> to see how to load{' '}
-          <ThemedText style={{ fontFamily: 'SpaceMono' }}>
-            custom fonts such as this one.
-          </ThemedText>
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/versions/latest/sdk/font">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful <ThemedText type="defaultSemiBold">react-native-reanimated</ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+    <ScrollView style={styles.container}>
+      <Text style={styles.title}>月別損益グラフ</Text>
+
+      {/* 月選択ピッカー */}
+      <Picker
+        selectedValue={selectedMonth}
+        onValueChange={setSelectedMonth}
+        style={styles.picker}
+      >
+        {monthItems}
+      </Picker>
+
+
+      {/* 折れ線グラフ */}
+      {dataPoints.length > 0 ? (
+        <ScrollView horizontal>
+          <LineChart
+            data={{
+              labels: labels,
+              datasets: [{ data: dataPoints }],
+            }}
+            width={chartWidth}
+            height={280}
+            yAxisSuffix="円"
+            fromZero
+            chartConfig={{
+              backgroundColor: '#ffffff',
+              backgroundGradientFrom: '#ffffff',
+              backgroundGradientTo: '#ffffff',
+              decimalPlaces: 0,
+              color: (opacity = 1) => `rgba(0, 123, 255, ${opacity})`,
+              labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+              propsForDots: {
+                r: '5',
+                strokeWidth: '2',
+                stroke: '#00adf5',
+              },
+            }}
+            style={{ marginVertical: 16, borderRadius: 16 }}
+          />
+        </ScrollView>
+      ) : (
+        <Text style={styles.noDataText}>この月のデータはありません。</Text>
+      )}
+
+      {/* ✅ ここに追加 */}
+
+      <Text style={styles.totalText}>合計損益：{totalProfit.toLocaleString()}円</Text>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: {
+    marginTop: 60,
+    paddingHorizontal: 8,
   },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
+  picker: {
+    marginVertical: 10,
+    marginHorizontal: 20,
+  },
+  noDataText: {
+    textAlign: 'center',
+    marginTop: 20,
+  },
+  totalText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginTop: 10,
+    color: '#333',
+  }
+
 });
