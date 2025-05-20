@@ -64,7 +64,7 @@ export default function NextScreen() {
         style={styles.input}
         value={amount}
         onChangeText={setAmount}
-        keyboardType="numeric"
+        keyboardType="default" // ← これに変更！
         placeholder="例: 3000 または -1500"
       />
       <Button title="保存する" onPress={saveProfit} />

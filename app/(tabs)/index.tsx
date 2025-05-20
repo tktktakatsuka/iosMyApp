@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import dayjs from 'dayjs';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -6,10 +7,10 @@ import { Calendar, DateData, LocaleConfig } from 'react-native-calendars';
 
 // 日本語カレンダー設定
 LocaleConfig.locales['ja'] = {
-  monthNames: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
-  monthNamesShort: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
-  dayNames: ['日曜日','月曜日','火曜日','水曜日','木曜日','金曜日','土曜日'],
-  dayNamesShort: ['日','月','火','水','木','金','土'],
+  monthNames: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
+  monthNamesShort: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
+  dayNames: ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'],
+  dayNamesShort: ['日', '月', '火', '水', '木', '金', '土'],
   today: '今日'
 };
 LocaleConfig.defaultLocale = 'ja';
@@ -22,8 +23,12 @@ export default function CalendarScreen() {
   const [profitData, setProfitData] = useState<ProfitData>({});
   const lastTappedDate = useRef<string | null>(null);
 
-  // 合計損益計算
-  const totalProfit = Object.values(profitData).reduce((sum, val) => sum + val, 0);
+  // 選択された日付がある場合はその月、なければ今月を基準に
+  const selectedMonth = selectedDate ? dayjs(selectedDate).format('YYYY-MM') : dayjs().format('YYYY-MM');
+
+  const totalProfit = Object.entries(profitData)
+    .filter(([date]) => date.startsWith(selectedMonth))
+    .reduce((sum, [, value]) => sum + value, 0);
 
   useFocusEffect(
     useCallback(() => {
@@ -82,7 +87,6 @@ export default function CalendarScreen() {
     <View style={styles.container}>
       <Calendar
         onDayPress={handleDayPress}
-        markedDates={selectedDate ? { [selectedDate]: { selected: true, selectedColor: '#00adf5' } } : {}}
         theme={{
           textDayFontSize: 20,
           textMonthFontSize: 10,
@@ -92,6 +96,19 @@ export default function CalendarScreen() {
         }}
         monthFormat={'yyyy年 MM月'}
         firstDay={0}
+        onMonthChange={(month) => {
+          const today = dayjs();
+          const currentMonth = `${month.year}-${String(month.month).padStart(2, '0')}`;
+
+          if (today.format('YYYY-MM') === currentMonth) {
+            setSelectedDate(today.format('YYYY-MM-DD'));
+          } else {
+            const firstDayOfMonth = `${month.year}-${String(month.month).padStart(2, '0')}-01`;
+            setSelectedDate(firstDayOfMonth);
+          }
+        }}
+        markedDates={selectedDate ? { [selectedDate]: { selected: true, selectedColor: '#00adf5' } } : {}}
+
         dayComponent={({ date, state }) => {
           if (!date) return null;
           const profit = profitData[date.dateString];
@@ -106,7 +123,7 @@ export default function CalendarScreen() {
                 {profit !== undefined && (
                   <Text style={[styles.profitText, profit >= 0 ? styles.profit : styles.loss]}>
                     {profit > 0 ? `+${profit}` : profit}
-                    
+
                   </Text>
                 )}
               </View>
@@ -118,14 +135,14 @@ export default function CalendarScreen() {
       {/* 合計損益 */}
       <View style={styles.selectedProfitContainer}>
         <Text style={[styles.selectedProfitText, totalProfit >= 0 ? styles.profit : styles.loss]}>
-          合計損益: {totalProfit >= 0 ? `+${totalProfit}` : totalProfit} 円
+          {selectedMonth} の合計損益: {totalProfit >= 0 ? `+${totalProfit}` : totalProfit} 円
         </Text>
       </View>
 
-      {/* デモボタン */}
+      {/* デモボタン
       <TouchableOpacity onPress={addRandomProfit} style={styles.addButton}>
         <Text style={styles.addButtonText}>損益をランダムに追加</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   );
 }
