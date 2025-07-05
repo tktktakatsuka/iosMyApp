@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
+import { useFocusEffect } from '@react-navigation/native';
 import dayjs from 'dayjs';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Dimensions, ScrollView, StyleSheet, Text } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 
@@ -13,16 +14,18 @@ export default function GraphScreen() {
   const [labels, setLabels] = useState<string[]>([]);
   const [dataPoints, setDataPoints] = useState<number[]>([]);
 
-  useEffect(() => {
-    const loadData = async () => {
-      const json = await AsyncStorage.getItem('profitData');
-      if (json) {
-        const allData: ProfitData = JSON.parse(json);
-        setProfitData(allData);
-      }
-    };
-    loadData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      const loadData = async () => {
+        const json = await AsyncStorage.getItem('profitData');
+        if (json) {
+          const allData: ProfitData = JSON.parse(json);
+          setProfitData(allData);
+        }
+      };
+      loadData();
+    }, [])
+  );
 
   const [totalProfit, setTotalProfit] = useState<number>(0); // ← 追加
 
