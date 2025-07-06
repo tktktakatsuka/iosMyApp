@@ -138,11 +138,6 @@ export default function CalendarScreen() {
           {selectedMonth} の合計損益: {totalProfit >= 0 ? `+${totalProfit}` : totalProfit} 円
         </Text>
       </View>
-
-      {/* デモボタン
-      <TouchableOpacity onPress={addRandomProfit} style={styles.addButton}>
-        <Text style={styles.addButtonText}>損益をランダムに追加</Text>
-      </TouchableOpacity> */}
     </View>
   );
 }

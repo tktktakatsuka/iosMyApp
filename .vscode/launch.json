@@ -9,6 +9,14 @@
         "platform": "ios", // or "android"
         "target": "expo",
         "enableDebug": true
+      },    
+      {
+        "name": "Attach to packager",
+        "cwd": "${workspaceFolder}",
+        "type": "reactnative",
+        "request": "attach",
+        // Expoのデバッグポートにアタッチ
+        "port": 19001
       }
     ]
   }
