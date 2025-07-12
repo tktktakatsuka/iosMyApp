@@ -9,11 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.s.takatsuka.MyApp",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "このアプリでは写真撮影のためにカメラを使用します。"
+        "NSCameraUsageDescription": "写真を撮影して収支記録に添付するためにカメラを使用します。"
       }
 
 

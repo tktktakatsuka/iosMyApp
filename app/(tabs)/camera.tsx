@@ -9,10 +9,11 @@ export default function App() {
   const [zoom, setZoom] = useState(0);
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
-  const cameraRef = useRef<any>(null);
+  const cameraRef = useRef<CameraView | null>(null);
 
-  if (!permission || !mediaPermission) {
-    return <View />;
+  if (permission === null || mediaPermission === null) {
+    // 許可状況がまだ読み込まれていない
+    return null;
   }
 
   if (!permission.granted || !mediaPermission.granted) {
