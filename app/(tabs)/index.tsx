@@ -15,7 +15,12 @@ LocaleConfig.locales['ja'] = {
 };
 LocaleConfig.defaultLocale = 'ja';
 
-type ProfitData = Record<string, number>;
+type ProfitItem = {
+  amount: number;
+  categoryId?: string;
+};
+
+type ProfitData = Record<string, ProfitItem>;
 
 export default function CalendarScreen() {
   const router = useRouter();
@@ -23,20 +28,18 @@ export default function CalendarScreen() {
   const [profitData, setProfitData] = useState<ProfitData>({});
   const lastTappedDate = useRef<string | null>(null);
 
-  // 選択された日付がある場合はその月、なければ今月を基準に
   const selectedMonth = selectedDate ? dayjs(selectedDate).format('YYYY-MM') : dayjs().format('YYYY-MM');
 
   const totalProfit = Object.entries(profitData)
     .filter(([date]) => date.startsWith(selectedMonth))
-    .reduce((sum, [, value]) => sum + value, 0);
+    .reduce((sum, [, item]) => sum + (item.amount ?? 0), 0);
 
   useFocusEffect(
     useCallback(() => {
-      loadProfitData(); // ← フォーカス時にデータ再読み込み
+      loadProfitData();
     }, [])
   );
 
-  // AsyncStorageからデータ読み込み
   const loadProfitData = async () => {
     try {
       const json = await AsyncStorage.getItem('profitData');
@@ -48,7 +51,6 @@ export default function CalendarScreen() {
     }
   };
 
-  // AsyncStorageに保存
   const saveProfitData = async (data: ProfitData) => {
     try {
       await AsyncStorage.setItem('profitData', JSON.stringify(data));
@@ -57,7 +59,6 @@ export default function CalendarScreen() {
     }
   };
 
-  // 日付タップ処理
   function handleDayPress(day: DateData) {
     if (lastTappedDate.current === day.dateString) {
       router.push({
@@ -73,15 +74,6 @@ export default function CalendarScreen() {
       }, 1500);
     }
   }
-
-  // デモ用: 選択された日にランダム損益を保存する関数（本来はフォームなどで入力）
-  const addRandomProfit = async () => {
-    if (!selectedDate) return;
-    const newProfit = Math.floor(Math.random() * 5000) * (Math.random() > 0.5 ? 1 : -1);
-    const updated = { ...profitData, [selectedDate]: newProfit };
-    setProfitData(updated);
-    await saveProfitData(updated);
-  };
 
   return (
     <View style={styles.container}>
@@ -99,7 +91,6 @@ export default function CalendarScreen() {
         onMonthChange={(month) => {
           const today = dayjs();
           const currentMonth = `${month.year}-${String(month.month).padStart(2, '0')}`;
-
           if (today.format('YYYY-MM') === currentMonth) {
             setSelectedDate(today.format('YYYY-MM-DD'));
           } else {
@@ -108,11 +99,11 @@ export default function CalendarScreen() {
           }
         }}
         markedDates={selectedDate ? { [selectedDate]: { selected: true, selectedColor: '#00adf5' } } : {}}
-
         dayComponent={({ date, state }) => {
           if (!date) return null;
-          const profit = profitData[date.dateString];
+          const profitItem = profitData[date.dateString];
           const isSelected = selectedDate === date.dateString;
+          const amount = profitItem?.amount;
 
           return (
             <TouchableOpacity onPress={() => handleDayPress(date)}>
@@ -120,10 +111,9 @@ export default function CalendarScreen() {
                 <Text style={[styles.dayText, state === 'disabled' && styles.disabledText]}>
                   {date.day}
                 </Text>
-                {profit !== undefined && (
-                  <Text style={[styles.profitText, profit >= 0 ? styles.profit : styles.loss]}>
-                    {profit > 0 ? `+${profit}` : profit}
-
+                {amount !== undefined && (
+                  <Text style={[styles.profitText, amount >= 0 ? styles.profit : styles.loss]}>
+                    {amount > 0 ? `+${amount}` : amount}
                   </Text>
                 )}
               </View>
@@ -182,17 +172,5 @@ const styles = StyleSheet.create({
   selectedProfitText: {
     fontSize: 20,
     fontWeight: 'bold',
-  },
-  addButton: {
-    marginTop: 20,
-    backgroundColor: '#00adf5',
-    padding: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginHorizontal: 20,
-  },
-  addButtonText: {
-    color: 'white',
-    fontSize: 16,
   },
 });

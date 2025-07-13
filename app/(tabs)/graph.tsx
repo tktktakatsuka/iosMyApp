@@ -6,7 +6,12 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 
-type ProfitData = Record<string, number>;
+type ProfitItem = {
+  amount: number;
+  categoryId?: string;
+};
+
+type ProfitData = Record<string, ProfitItem>;
 
 export default function GraphScreen() {
   const [profitData, setProfitData] = useState<ProfitData>({});
@@ -33,7 +38,7 @@ export default function GraphScreen() {
       .filter(date => date.startsWith(selectedMonth))
       .sort();
 
-    const values = filteredDates.map(date => profitData[date]);
+    const values = filteredDates.map(date => profitData[date]?.amount ?? 0);
     setLabels(filteredDates.map(d => d.slice(8)));
 
     const cumulativeValues = values.reduce<number[]>((acc, val) => {
@@ -70,13 +75,11 @@ export default function GraphScreen() {
       {/* グラフ or データなしメッセージ */}
       <View style={styles.graphWrapper}>
         {dataPoints.length > 0 ? (
-          <ScrollView horizontal>
             <LineChart
               data={{
                 labels: labels,
                 datasets: [{ data: dataPoints }],
               }}
-              
               width={chartWidth}
               height={280}
               yAxisSuffix="円"
@@ -94,9 +97,8 @@ export default function GraphScreen() {
                   stroke: '#00adf5',
                 },
               }}
-              style={{ marginVertical: 80, borderRadius: 16, paddingTop: 24  }}
+              style={{ marginVertical: 80, borderRadius: 16, paddingTop: 24 }}
             />
-          </ScrollView>
         ) : (
           <View style={styles.noDataContainer}>
             <Text style={styles.noDataText}>この月のデータはありません。</Text>
@@ -126,13 +128,13 @@ const styles = StyleSheet.create({
     height: 56,
     backgroundColor: '#f0f0f0',
     borderRadius: 8,
-    marginBottom: 20
+    marginBottom: 20,
   },
   graphWrapper: {
     minHeight: 280,
     justifyContent: 'center',
     alignItems: 'center',
-    width: '100%', 
+    width: '100%',
   },
   noDataContainer: {
     height: 280,
