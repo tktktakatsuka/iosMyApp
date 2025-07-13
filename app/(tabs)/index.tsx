@@ -18,7 +18,9 @@ LocaleConfig.defaultLocale = 'ja';
 type ProfitItem = {
   amount: number;
   categoryId?: string;
+  type?: 'inÏcome' | 'expense'; // ← 追加
 };
+
 
 type ProfitData = Record<string, ProfitItem>;
 
@@ -32,7 +34,11 @@ export default function CalendarScreen() {
 
   const totalProfit = Object.entries(profitData)
     .filter(([date]) => date.startsWith(selectedMonth))
-    .reduce((sum, [, item]) => sum + (item.amount ?? 0), 0);
+    .reduce((sum, [, item]) => {
+      const type = item.type ?? 'income'; // デフォルトを収入とする
+      const signedAmount = type === 'expense' ? -Math.abs(item.amount) : Math.abs(item.amount);
+      return sum + signedAmount;
+    }, 0);
 
   useFocusEffect(
     useCallback(() => {
@@ -112,10 +118,12 @@ export default function CalendarScreen() {
                   {date.day}
                 </Text>
                 {amount !== undefined && (
-                  <Text style={[styles.profitText, amount >= 0 ? styles.profit : styles.loss]}>
-                    {amount > 0 ? `+${amount}` : amount}
+                  <Text style={[styles.profitText, profitItem?.type === 'expense' ? styles.loss : styles.profit]}>
+                    {profitItem?.type === 'expense' ? `-${Math.abs(amount)}` : `+${amount}`}
                   </Text>
                 )}
+
+
               </View>
             </TouchableOpacity>
           );
