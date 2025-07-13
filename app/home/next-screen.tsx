@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Font from 'expo-font';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Button, FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -9,6 +8,14 @@ import { GestureHandlerRootView, TouchableOpacity } from 'react-native-gesture-h
 type ProfitItem = {
   amount: number;
   categoryId?: string;
+  type: 'income' | 'expense'; // ←追加
+};
+
+type Category = {
+  id: string;
+  label: string;
+  iconName: keyof typeof Ionicons.glyphMap;
+  color: string;
 };
 
 type ProfitData = Record<string, ProfitItem>;
@@ -18,14 +25,7 @@ export default function NextScreen() {
   const router = useRouter();
   const [amount, setAmount] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-
-  type Category = {
-    id: string;
-    label: string;
-    iconName: keyof typeof Ionicons.glyphMap;
-    color: string;
-  };
-
+  const [profitType, setProfitType] = useState<'income' | 'expense'>('expense');
   const categories: Category[] = [
     { id: 'food', label: '食費', iconName: 'restaurant', color: '#FDD835' },
     { id: 'clothes', label: '衣服', iconName: 'shirt', color: '#42A5F5' },
@@ -37,16 +37,6 @@ export default function NextScreen() {
     { id: 'communication', label: '通信費', iconName: 'wifi', color: '#7E57C2' },
   ];
 
-  useEffect(() => {
-    if (typeof date === 'string') {
-      loadProfit(date);
-    }
-
-    const loadFonts = async () => {
-      await Font.loadAsync(Ionicons.font);
-    };
-    loadFonts();
-  }, [date]);
 
   const loadProfit = async (targetDate: string) => {
     try {
@@ -57,6 +47,7 @@ export default function NextScreen() {
         if (item !== undefined && typeof item.amount === 'number') {
           setAmount(String(item.amount));
           setSelectedCategory(item.categoryId ?? null); // ← カテゴリ復元もここで
+          setProfitType(item.type || 'expense'); // ←収支タイプの復元
         }
       }
     } catch (e) {
@@ -80,6 +71,7 @@ export default function NextScreen() {
       data[date] = {
         amount: numericValue,
         categoryId: selectedCategory || '',
+        type: profitType,
       };
 
       await AsyncStorage.setItem('profitData', JSON.stringify(data));
@@ -95,17 +87,42 @@ export default function NextScreen() {
     setSelectedCategory(item.id);
   };
 
+  useEffect(() => {
+    if (typeof date === 'string') {
+      loadProfit(date);
+    }
+  }, [date]);
+
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.container}>
         <Stack.Screen options={{ title: '損益入力' }} />
         <Text style={styles.label}>{date} の損益</Text>
+
+        <View style={styles.toggleContainer}>
+          <TouchableOpacity
+            style={[styles.toggleButton, profitType === 'income' && styles.toggleSelected]}
+            onPress={() => setProfitType('income')}
+          >
+            <Text style={styles.toggleText}>収入</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleButton, profitType === 'expense' && styles.toggleSelected]}
+            onPress={() => setProfitType('expense')}
+          >
+            <Text style={styles.toggleText}>支出</Text>
+          </TouchableOpacity>
+        </View>
+
+
+
         <TextInput
           style={styles.input}
           value={amount}
           onChangeText={setAmount}
-          keyboardType="default"
-          placeholder="例: 3000 または -1500"
+          keyboardType="number-pad"
+          placeholder="例: 2000"
         />
 
         <Text style={styles.label}>カテゴリを選択</Text>
@@ -169,5 +186,27 @@ const styles = StyleSheet.create({
     height: 40,
     textAlign: 'center',
     textAlignVertical: 'center',
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 16,
+    gap: 10,
+  },
+  toggleButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#aaa',
+    backgroundColor: '#f0f0f0',
+  },
+  toggleSelected: {
+    backgroundColor: '#00bcd4',
+    borderColor: '#00bcd4',
+  },
+  toggleText: {
+    color: '#333',
+    fontWeight: 'bold',
   },
 });
