@@ -42,7 +42,8 @@ export default function CalendarScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadProfitData();
+      loadProfitData()
+      console.log(profitData);
     }, [])
   );
 
@@ -54,14 +55,6 @@ export default function CalendarScreen() {
       }
     } catch (e) {
       console.error('データ読み込み失敗:', e);
-    }
-  };
-
-  const saveProfitData = async (data: ProfitData) => {
-    try {
-      await AsyncStorage.setItem('profitData', JSON.stringify(data));
-    } catch (e) {
-      console.error('データ保存失敗:', e);
     }
   };
 
