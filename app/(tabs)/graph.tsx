@@ -9,7 +9,9 @@ import { LineChart } from 'react-native-chart-kit';
 type ProfitItem = {
   amount: number;
   categoryId?: string;
+  type: 'income' | 'expense'; // ★追加
 };
+
 
 type ProfitData = Record<string, ProfitItem>;
 
@@ -37,19 +39,26 @@ export default function GraphScreen() {
     const filteredDates = Object.keys(profitData)
       .filter(date => date.startsWith(selectedMonth))
       .sort();
-
-    const values = filteredDates.map(date => profitData[date]?.amount ?? 0);
+  
+    const values = filteredDates.map(date => {
+      const item = profitData[date];
+      if (!item) return 0;
+      const amount = Math.abs(item.amount);
+      return item.type === 'expense' ? -amount : amount;
+    });
+  
     setLabels(filteredDates.map(d => d.slice(8)));
-
+  
     const cumulativeValues = values.reduce<number[]>((acc, val) => {
       const last = acc.length > 0 ? acc[acc.length - 1] : 0;
       acc.push(last + val);
       return acc;
     }, []);
-
+  
     setDataPoints(cumulativeValues);
     setTotalProfit(cumulativeValues[cumulativeValues.length - 1] || 0);
   }, [profitData, selectedMonth]);
+    
 
   const chartWidth = Math.max(labels.length * 50, Dimensions.get('window').width - 16);
   const year = 2025;
