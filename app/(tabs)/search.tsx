@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import dayjs from 'dayjs';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import React, { useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type ProfitItem = {
@@ -13,25 +14,43 @@ type ProfitItem = {
   type?: 'income' | 'expense';
 };
 
+// カテゴリごとのアイコンと色のマップを定義（NextScreenと同じに）
+const categoryMap: Record<string, { iconName: keyof typeof Ionicons.glyphMap; color: string }> = {
+  food: { iconName: 'restaurant', color: '#FDD835' },
+  clothes: { iconName: 'shirt', color: '#42A5F5' },
+  hobby: { iconName: 'game-controller', color: '#AB47BC' },
+  transport: { iconName: 'bus', color: '#26C6DA' },
+  daily: { iconName: 'cart', color: '#66BB6A' },
+  social: { iconName: 'people', color: '#FFA726' },
+  rent: { iconName: 'home', color: '#EF5350' },
+  communication: { iconName: 'wifi', color: '#7E57C2' },
+};
+
+// カテゴリIDからアイコン名と色を取得（なければデフォルト）
+const getIconInfo = (categoryId?: string) => {
+  return categoryMap[categoryId ?? ''] ?? { iconName: 'help-circle', color: 'gray' };
+};
+
+
 type ProfitData = Record<string, ProfitItem>;
 
 export default function IncomeListScreen() {
   const [items, setItems] = useState<ProfitItem[]>([]);
+  const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
 
-  useEffect(() => {
+  useFocusEffect(() => {
     const loadData = async () => {
       try {
         const json = await AsyncStorage.getItem('profitData');
         if (json) {
-          const rawData: Record<string, ProfitItem> = JSON.parse(json);
-          // ProfitItemにidとdateを追加してリスト化
+          const rawData: ProfitData = JSON.parse(json);
           const parsed: ProfitItem[] = Object.entries(rawData).map(([date, item]) => ({
             id: date,
             date,
             amount: item.amount,
             categoryId: item.categoryId,
             type: item.type,
-            memo: '', // メモがない前提（必要なら保存側も修正）
+            memo: '',
           }));
           setItems(parsed);
         }
@@ -40,33 +59,52 @@ export default function IncomeListScreen() {
       }
     };
     loadData();
-  }, []);
+  },);
 
-  const grouped = items.reduce<Record<string, ProfitItem[]>>((acc, item) => {
+  // フィルター処理
+  const filteredItems = items.filter((item) => {
+    if (filterType === 'all') return true;
+    return item.type === filterType;
+  });
+
+  const grouped = filteredItems.reduce<Record<string, ProfitItem[]>>((acc, item) => {
     if (!acc[item.date]) acc[item.date] = [];
     acc[item.date].push(item);
     return acc;
   }, {});
 
-  const renderEntry = (item: ProfitItem) => (
-    <View style={styles.entry} key={item.id}>
-      <Ionicons name="cash" size={20} color="orange" style={styles.icon} />
-      <View style={styles.entryText}>
-        <Text style={{ color: '#0077cc' }}>￥{item.amount}</Text>
-        {item.memo ? <Text style={styles.memo}>{item.memo}</Text> : null}
+  const renderEntry = (item: ProfitItem) => {
+    const { iconName, color } = getIconInfo(item.categoryId);
+    return (
+      <View style={styles.entry} key={item.id}>
+        <Ionicons name={iconName} size={20} color={color} style={styles.icon} />
+        <View style={styles.entryText}>
+          <Text style={item.type === 'expense' ? styles.loss : styles.profit}>
+            {item.type === 'expense' ? `-￥${Math.abs(item.amount)}` : `+￥${item.amount}`}
+          </Text>
+          {item.memo ? <Text style={styles.memo}>{item.memo}</Text> : null}
+        </View>
+        <Text style={styles.date}>{item.date}</Text>
       </View>
-      <Text style={styles.date}>{item.date}</Text>
-    </View>
-  );
+    );
+  };
+  
 
   return (
     <View style={styles.container}>
       <Text style={styles.header}>2025年7月1日（火）〜7月31日（木）</Text>
 
+      {/* タブ切り替え */}
       <View style={styles.tabRow}>
-        <TouchableOpacity><Text style={styles.tab}>支出</Text></TouchableOpacity>
-        <TouchableOpacity><Text style={[styles.tab, styles.selectedTab]}>収入</Text></TouchableOpacity>
-        <TouchableOpacity><Text style={styles.tab}>その他</Text></TouchableOpacity>
+        <TouchableOpacity onPress={() => setFilterType('expense')}>
+          <Text style={[styles.tab, filterType === 'expense' && styles.selectedTab]}>支出</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setFilterType('income')}>
+          <Text style={[styles.tab, filterType === 'income' && styles.selectedTab]}>収入</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setFilterType('all')}>
+          <Text style={[styles.tab, filterType === 'all' && styles.selectedTab]}>すべて</Text>
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -76,12 +114,11 @@ export default function IncomeListScreen() {
           <View style={styles.dateGroup}>
             <Text style={styles.dateLabel}>
               {dayjs(date).format('D日（ddd）')} ¥
-              {entries.reduce((sum, e) => sum + e.amount, 0)}
+              {entries.reduce((sum, e) =>
+                sum + (e.type === 'expense' ? -Math.abs(e.amount) : Math.abs(e.amount)), 0)}
             </Text>
             {entries.map((entry) => (
-              <View key={entry.id}>
-                {renderEntry(entry)}
-              </View>
+              <View key={entry.id}>{renderEntry(entry)}</View>
             ))}
           </View>
         )}
@@ -103,4 +140,6 @@ const styles = StyleSheet.create({
   entryText: { flex: 1 },
   memo: { fontSize: 12, color: '#666' },
   date: { fontSize: 10, color: '#aaa' },
+  profit: { color: 'red', fontSize: 14 },
+  loss: { color: 'blue', fontSize: 14 },
 });

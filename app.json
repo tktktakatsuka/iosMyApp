@@ -13,7 +13,8 @@
       "bundleIdentifier": "com.s.takatsuka.MyApp",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "写真を撮影して収支記録に添付するためにカメラを使用します。"
+        "NSCameraUsageDescription": "写真を撮影して収支記録に添付するためにカメラを使用します。",
+        "CFBundleDisplayName": "収支管理アプリ コツコツ貯めよう"
       }
 
 

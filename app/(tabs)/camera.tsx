@@ -7,23 +7,28 @@ export default function App() {
   const [facing, setFacing] = useState<CameraType>('back');
   const [flash, setFlash] = useState<FlashMode>('off');
   const [zoom, setZoom] = useState(0);
-  const [permission, requestPermission] = useCameraPermissions();
+
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
   const cameraRef = useRef<CameraView | null>(null);
 
-  if (permission === null || mediaPermission === null) {
-    // 許可状況がまだ読み込まれていない
-    return null;
-  }
+  // 許可未取得状態
+  if (!cameraPermission || !mediaPermission) return null;
 
-  if (!permission.granted || !mediaPermission.granted) {
+  // 許可がない場合
+  if (!cameraPermission.granted || !mediaPermission.granted) {
     return (
       <View style={styles.container}>
-        <Text style={styles.message}>カメラとメディアライブラリのアクセス許可が必要です</Text>
-        <Button onPress={() => {
-          requestPermission();
-          requestMediaPermission();
-        }} title="許可する" />
+        <Text style={styles.message}>
+          この機能を使うにはカメラとメディアライブラリへのアクセスが必要です。
+        </Text>
+        <Button
+          onPress={() => {
+            requestCameraPermission();
+            requestMediaPermission();
+          }}
+          title="次へ"
+        />
       </View>
     );
   }
@@ -33,13 +38,9 @@ export default function App() {
   };
 
   const toggleFlash = () => {
-    setFlash(current => {
-      switch (current) {
-        case 'off': return 'on';
-        case 'on': return 'auto';
-        default: return 'off';
-      }
-    });
+    setFlash(current =>
+      current === 'off' ? 'on' : current === 'on' ? 'auto' : 'off'
+    );
   };
 
   const handleZoom = (direction: 'in' | 'out') => {
@@ -52,19 +53,23 @@ export default function App() {
   };
 
   const takePicture = async () => {
-    if (!cameraRef.current) return;
-
     try {
+      if (!cameraRef.current) {
+        Alert.alert('カメラの初期化が完了していません');
+        return;
+      }
       const photo = await cameraRef.current.takePictureAsync();
       await MediaLibrary.saveToLibraryAsync(photo.uri);
       Alert.alert('成功', '写真を保存しました！');
     } catch (error) {
+      console.error('撮影失敗:', error);
       Alert.alert('エラー', '写真の撮影または保存に失敗しました');
     }
   };
 
   return (
     <View style={styles.container}>
+      {/* CameraViewは許可が granted のときだけ描画 */}
       <CameraView
         ref={cameraRef}
         style={styles.camera}
@@ -91,12 +96,8 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  camera: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  camera: { flex: 1 },
   buttonContainer: {
     position: 'absolute',
     bottom: 40,
@@ -115,11 +116,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'white',
-    bottom: 80
+    bottom: 80,
   },
-  buttonText: {
-    fontSize: 24,
-  },
+  buttonText: { fontSize: 24 },
   message: {
     fontSize: 18,
     textAlign: 'center',
@@ -135,12 +134,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'white',
-    bottom: 80
+    bottom: 80,
   },
   captureButtonInner: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: 'white'
+    backgroundColor: 'white',
   },
 });
