@@ -1,9 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import dayjs from 'dayjs';
+import 'dayjs/locale/ja';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import { useFocusEffect } from 'expo-router';
 import React, { useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import DateTimePickerModal from "react-native-modal-datetime-picker";
+
+dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
+dayjs.locale('ja');
 
 type ProfitItem = {
   id: string;
@@ -14,7 +22,6 @@ type ProfitItem = {
   type?: 'income' | 'expense';
 };
 
-// カテゴリごとのアイコンと色のマップを定義（NextScreenと同じに）
 const categoryMap: Record<string, { iconName: keyof typeof Ionicons.glyphMap; color: string }> = {
   food: { iconName: 'restaurant', color: '#FDD835' },
   clothes: { iconName: 'shirt', color: '#42A5F5' },
@@ -26,17 +33,19 @@ const categoryMap: Record<string, { iconName: keyof typeof Ionicons.glyphMap; co
   communication: { iconName: 'wifi', color: '#7E57C2' },
 };
 
-// カテゴリIDからアイコン名と色を取得（なければデフォルト）
 const getIconInfo = (categoryId?: string) => {
   return categoryMap[categoryId ?? ''] ?? { iconName: 'help-circle', color: 'gray' };
 };
-
 
 type ProfitData = Record<string, ProfitItem>;
 
 export default function IncomeListScreen() {
   const [items, setItems] = useState<ProfitItem[]>([]);
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
+  const [fromDate, setFromDate] = useState(dayjs('2025-07-01'));
+  const [toDate, setToDate] = useState(dayjs('2025-07-31'));
+  const [isFromPickerVisible, setFromPickerVisible] = useState(false);
+  const [isToPickerVisible, setToPickerVisible] = useState(false);
 
   useFocusEffect(() => {
     const loadData = async () => {
@@ -59,12 +68,13 @@ export default function IncomeListScreen() {
       }
     };
     loadData();
-  },);
+  }, );
 
-  // フィルター処理
   const filteredItems = items.filter((item) => {
-    if (filterType === 'all') return true;
-    return item.type === filterType;
+    const itemDate = dayjs(item.date);
+    const inRange = itemDate.isSameOrAfter(fromDate, 'day') && itemDate.isSameOrBefore(toDate, 'day');
+    const typeMatch = filterType === 'all' || item.type === filterType;
+    return inRange && typeMatch;
   });
 
   const grouped = filteredItems.reduce<Record<string, ProfitItem[]>>((acc, item) => {
@@ -88,13 +98,39 @@ export default function IncomeListScreen() {
       </View>
     );
   };
-  
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>2025年7月1日（火）〜7月31日（木）</Text>
 
-      {/* タブ切り替え */}
+      <TouchableOpacity onPress={() => setFromPickerVisible(true)}>
+        <Text style={styles.datePickerText}>開始日: {fromDate.format('YYYY-MM-DD')}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => setToPickerVisible(true)}>
+        <Text style={styles.datePickerText}>終了日: {toDate.format('YYYY-MM-DD')}</Text>
+      </TouchableOpacity>
+
+      <DateTimePickerModal
+        isVisible={isFromPickerVisible}
+        mode="date"
+        date={fromDate.toDate()}
+        onConfirm={(date) => {
+          setFromDate(dayjs(date));
+          setFromPickerVisible(false);
+        }}
+        onCancel={() => setFromPickerVisible(false)}
+      />
+
+      <DateTimePickerModal
+        isVisible={isToPickerVisible}
+        mode="date"
+        date={toDate.toDate()}
+        onConfirm={(date) => {
+          setToDate(dayjs(date));
+          setToPickerVisible(false);
+        }}
+        onCancel={() => setToPickerVisible(false)}
+      />
+
       <View style={styles.tabRow}>
         <TouchableOpacity onPress={() => setFilterType('expense')}>
           <Text style={[styles.tab, filterType === 'expense' && styles.selectedTab]}>支出</Text>
@@ -142,4 +178,10 @@ const styles = StyleSheet.create({
   date: { fontSize: 10, color: '#aaa' },
   profit: { color: 'red', fontSize: 14 },
   loss: { color: 'blue', fontSize: 14 },
+  datePickerText: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginVertical: 4,
+    color: '#333',
+  },
 });
