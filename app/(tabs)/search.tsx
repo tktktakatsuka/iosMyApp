@@ -5,8 +5,15 @@ import 'dayjs/locale/ja';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import { useFocusEffect } from 'expo-router';
-import React, { useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { memo, useCallback, useState } from 'react';
+import {
+  FlatList,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 
 dayjs.extend(isSameOrAfter);
@@ -47,29 +54,32 @@ export default function IncomeListScreen() {
   const [isFromPickerVisible, setFromPickerVisible] = useState(false);
   const [isToPickerVisible, setToPickerVisible] = useState(false);
 
-  useFocusEffect(() => {
-    const loadData = async () => {
-      try {
-        const json = await AsyncStorage.getItem('profitData');
-        if (json) {
-          const rawData: ProfitData = JSON.parse(json);
-          const parsed: ProfitItem[] = Object.entries(rawData).map(([date, item]) => ({
-            id: date,
-            date,
-            amount: item.amount,
-            categoryId: item.categoryId,
-            type: item.type,
-            memo: '',
-          }));
-          setItems(parsed);
+  useFocusEffect(
+    useCallback(() => {
+      const loadData = async () => {
+        try {
+          const json = await AsyncStorage.getItem('profitData');
+          if (json) {
+            const rawData: ProfitData = JSON.parse(json);
+            const parsed: ProfitItem[] = Object.entries(rawData).map(([date, item]) => ({
+              id: date,
+              date,
+              amount: item.amount,
+              categoryId: item.categoryId,
+              type: item.type,
+              memo: '',
+            }));
+            setItems(parsed);
+          }
+        } catch (e) {
+          console.error('読み込み失敗:', e);
         }
-      } catch (e) {
-        console.error('読み込み失敗:', e);
-      }
-    };
-    loadData();
-  }, );
+      };
+      loadData();
+    }, [])
+  );
 
+  // フィルター後のデータ
   const filteredItems = items.filter((item) => {
     const itemDate = dayjs(item.date);
     const inRange = itemDate.isSameOrAfter(fromDate, 'day') && itemDate.isSameOrBefore(toDate, 'day');
@@ -77,13 +87,15 @@ export default function IncomeListScreen() {
     return inRange && typeMatch;
   });
 
+  // 日付でグループ化
   const grouped = filteredItems.reduce<Record<string, ProfitItem[]>>((acc, item) => {
     if (!acc[item.date]) acc[item.date] = [];
     acc[item.date].push(item);
     return acc;
   }, {});
 
-  const renderEntry = (item: ProfitItem) => {
+  // レンダラーをメモ化してパフォーマンス向上
+  const RenderEntry = memo(({ item }: { item: ProfitItem }) => {
     const { iconName, color } = getIconInfo(item.categoryId);
     return (
       <View style={styles.entry} key={item.id}>
@@ -97,91 +109,144 @@ export default function IncomeListScreen() {
         <Text style={styles.date}>{item.date}</Text>
       </View>
     );
-  };
+  });
 
   return (
-    <View style={styles.container}>
-
-      <TouchableOpacity onPress={() => setFromPickerVisible(true)}>
-        <Text style={styles.datePickerText}>開始日: {fromDate.format('YYYY-MM-DD')}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => setToPickerVisible(true)}>
-        <Text style={styles.datePickerText}>終了日: {toDate.format('YYYY-MM-DD')}</Text>
-      </TouchableOpacity>
-
-      <DateTimePickerModal
-        isVisible={isFromPickerVisible}
-        mode="date"
-        date={fromDate.toDate()}
-        onConfirm={(date) => {
-          setFromDate(dayjs(date));
-          setFromPickerVisible(false);
-        }}
-        onCancel={() => setFromPickerVisible(false)}
-      />
-
-      <DateTimePickerModal
-        isVisible={isToPickerVisible}
-        mode="date"
-        date={toDate.toDate()}
-        onConfirm={(date) => {
-          setToDate(dayjs(date));
-          setToPickerVisible(false);
-        }}
-        onCancel={() => setToPickerVisible(false)}
-      />
-
-      <View style={styles.tabRow}>
-        <TouchableOpacity onPress={() => setFilterType('expense')}>
-          <Text style={[styles.tab, filterType === 'expense' && styles.selectedTab]}>支出</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        {/* 日付ピッカー */}
+        <TouchableOpacity onPress={() => setFromPickerVisible(true)}>
+          <Text style={styles.datePickerText}>開始日: {fromDate.format('YYYY-MM-DD')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setFilterType('income')}>
-          <Text style={[styles.tab, filterType === 'income' && styles.selectedTab]}>収入</Text>
+        <TouchableOpacity onPress={() => setToPickerVisible(true)}>
+          <Text style={styles.datePickerText}>終了日: {toDate.format('YYYY-MM-DD')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setFilterType('all')}>
-          <Text style={[styles.tab, filterType === 'all' && styles.selectedTab]}>すべて</Text>
-        </TouchableOpacity>
+
+        <DateTimePickerModal
+          isVisible={isFromPickerVisible}
+          mode="date"
+          date={fromDate.toDate()}
+          onConfirm={(date) => {
+            setFromDate(dayjs(date));
+            setFromPickerVisible(false);
+          }}
+          onCancel={() => setFromPickerVisible(false)}
+        />
+
+        <DateTimePickerModal
+          isVisible={isToPickerVisible}
+          mode="date"
+          date={toDate.toDate()}
+          onConfirm={(date) => {
+            setToDate(dayjs(date));
+            setToPickerVisible(false);
+          }}
+          onCancel={() => setToPickerVisible(false)}
+        />
+
+        {/* タブ */}
+        <View style={styles.tabRow}>
+          <TouchableOpacity onPress={() => setFilterType('expense')}>
+            <Text style={[styles.tab, filterType === 'expense' && styles.selectedTab]}>支出</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setFilterType('income')}>
+            <Text style={[styles.tab, filterType === 'income' && styles.selectedTab]}>収入</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setFilterType('all')}>
+            <Text style={[styles.tab, filterType === 'all' && styles.selectedTab]}>すべて</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 一覧表示 */}
+        <FlatList
+          data={Object.entries(grouped)}
+          keyExtractor={([date]) => date}
+          renderItem={({ item: [date, entries] }) => (
+            <View style={styles.dateGroup}>
+              <Text style={styles.dateLabel}>
+                {dayjs(date).format('D日（ddd）')} ¥
+                {entries.reduce((sum, e) =>
+                  sum + (e.type === 'expense' ? -Math.abs(e.amount) : Math.abs(e.amount)), 0
+                ).toLocaleString()}
+              </Text>
+              {entries.map((entry) => (
+                <RenderEntry key={entry.id} item={entry} />
+              ))}
+            </View>
+          )}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 80 }}
+        />
       </View>
-
-      <FlatList
-        data={Object.entries(grouped)}
-        keyExtractor={([date]) => date}
-        renderItem={({ item: [date, entries] }) => (
-          <View style={styles.dateGroup}>
-            <Text style={styles.dateLabel}>
-              {dayjs(date).format('D日（ddd）')} ¥
-              {entries.reduce((sum, e) =>
-                sum + (e.type === 'expense' ? -Math.abs(e.amount) : Math.abs(e.amount)), 0)}
-            </Text>
-            {entries.map((entry) => (
-              <View key={entry.id}>{renderEntry(entry)}</View>
-            ))}
-          </View>
-        )}
-      />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 40, paddingHorizontal: 10 },
-  header: { textAlign: 'center', fontSize: 16, marginBottom: 10 },
-  tabRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 10 },
-  tab: { fontSize: 16, color: '#888' },
-  selectedTab: { color: '#000', fontWeight: 'bold', textDecorationLine: 'underline' },
-  dateGroup: { marginBottom: 20 },
-  dateLabel: { fontSize: 14, fontWeight: 'bold', marginVertical: 6 },
-  entry: { flexDirection: 'row', alignItems: 'center', marginVertical: 6 },
-  icon: { marginRight: 10 },
-  entryText: { flex: 1 },
-  memo: { fontSize: 12, color: '#666' },
-  date: { fontSize: 10, color: '#aaa' },
-  profit: { color: 'red', fontSize: 14 },
-  loss: { color: 'blue', fontSize: 14 },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  container: {
+    flex: 1,
+    paddingTop: 20,
+    paddingHorizontal: 12,
+  },
   datePickerText: {
-    fontSize: 14,
+    fontSize: 16,
     textAlign: 'center',
-    marginVertical: 4,
+    marginVertical: 6,
     color: '#333',
+  },
+  tabRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginVertical: 12,
+  },
+  tab: {
+    fontSize: 16,
+    color: '#888',
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+  },
+  selectedTab: {
+    color: '#000',
+    fontWeight: 'bold',
+    textDecorationLine: 'underline',
+  },
+  dateGroup: {
+    marginBottom: 24,
+  },
+  dateLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginVertical: 6,
+  },
+  entry: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 6,
+  },
+  icon: {
+    marginRight: 10,
+  },
+  entryText: {
+    flex: 1,
+  },
+  memo: {
+    fontSize: 12,
+    color: '#666',
+  },
+  date: {
+    fontSize: 12,
+    color: '#aaa',
+  },
+  profit: {
+    color: 'red',
+    fontSize: 16,
+  },
+  loss: {
+    color: 'blue',
+    fontSize: 16,
   },
 });
