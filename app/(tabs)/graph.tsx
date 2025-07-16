@@ -39,26 +39,27 @@ export default function GraphScreen() {
     const filteredDates = Object.keys(profitData)
       .filter(date => date.startsWith(selectedMonth))
       .sort();
-  
+
     const values = filteredDates.map(date => {
       const item = profitData[date];
-      if (!item) return 0;
+      if (!item || typeof item.amount !== 'number') return 0;
       const amount = Math.abs(item.amount);
       return item.type === 'expense' ? -amount : amount;
     });
-  
+
+
     setLabels(filteredDates.map(d => d.slice(8)));
-  
+
     const cumulativeValues = values.reduce<number[]>((acc, val) => {
       const last = acc.length > 0 ? acc[acc.length - 1] : 0;
       acc.push(last + val);
       return acc;
     }, []);
-  
+
     setDataPoints(cumulativeValues);
     setTotalProfit(cumulativeValues[cumulativeValues.length - 1] || 0);
   }, [profitData, selectedMonth]);
-    
+
 
   const chartWidth = Math.max(labels.length * 50, Dimensions.get('window').width - 16);
   const year = 2025;
@@ -84,30 +85,30 @@ export default function GraphScreen() {
       {/* グラフ or データなしメッセージ */}
       <View style={styles.graphWrapper}>
         {dataPoints.length > 0 ? (
-            <LineChart
-              data={{
-                labels: labels,
-                datasets: [{ data: dataPoints }],
-              }}
-              width={chartWidth}
-              height={280}
-              yAxisSuffix="円"
-              fromZero
-              chartConfig={{
-                backgroundColor: '#ffffff',
-                backgroundGradientFrom: '#ffffff',
-                backgroundGradientTo: '#ffffff',
-                decimalPlaces: 0,
-                color: (opacity = 1) => `rgba(0, 123, 255, ${opacity})`,
-                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                propsForDots: {
-                  r: '5',
-                  strokeWidth: '2',
-                  stroke: '#00adf5',
-                },
-              }}
-              style={{ marginVertical: 80, borderRadius: 16, paddingTop: 24 }}
-            />
+          <LineChart
+            data={{
+              labels: labels,
+              datasets: [{ data: dataPoints }],
+            }}
+            width={chartWidth}
+            height={280}
+            yAxisSuffix="円"
+            fromZero
+            chartConfig={{
+              backgroundColor: '#ffffff',
+              backgroundGradientFrom: '#ffffff',
+              backgroundGradientTo: '#ffffff',
+              decimalPlaces: 0,
+              color: (opacity = 1) => `rgba(0, 123, 255, ${opacity})`,
+              labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+              propsForDots: {
+                r: '5',
+                strokeWidth: '2',
+                stroke: '#00adf5',
+              },
+            }}
+            style={{ marginVertical: 80, borderRadius: 16, paddingTop: 24 }}
+          />
         ) : (
           <View style={styles.noDataContainer}>
             <Text style={styles.noDataText}>この月のデータはありません。</Text>
