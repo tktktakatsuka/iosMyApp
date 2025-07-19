@@ -35,7 +35,10 @@ export default function NextScreen() {
     { id: 'social', label: '交際費', iconName: 'people', color: '#FFA726' },
     { id: 'rent', label: '家賃', iconName: 'home', color: '#EF5350' },
     { id: 'communication', label: '通信費', iconName: 'wifi', color: '#7E57C2' },
+    { id: 'salary', label: '給料', iconName: 'wallet', color: '#29B6F6' },
+    { id: 'other', label: 'その他', iconName: 'ellipsis-horizontal-circle', color: '#BDBDBD' }
   ];
+  
 
 
   const loadProfit = async (targetDate: string) => {
