@@ -126,6 +126,7 @@ export default function IncomeListScreen() {
           isVisible={isFromPickerVisible}
           mode="date"
           date={fromDate.toDate()}
+          themeVariant='light'
           onConfirm={(date) => {
             setFromDate(dayjs(date));
             setFromPickerVisible(false);

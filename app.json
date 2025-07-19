@@ -12,12 +12,12 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.s.takatsuka.MyApp",
       "infoPlist": {
+        "GADApplicationIdentifier": "ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy",
+        "NSUserTrackingUsageDescription": "このアプリは広告の効果を向上させるためにトラッキングを利用します。",
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "写真を撮影して収支記録に添付するためにカメラを使用します。",
         "CFBundleDisplayName": "収支管理アプリ コツコツ貯めよう"
       }
-
-
     },
     "android": {
       "adaptiveIcon": {
@@ -42,7 +42,13 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-sqlite"
+      [
+        "expo-ads-admob",
+        {
+          "userTrackingPermission": "このアプリでは広告のパーソナライズのためにトラッキング許可を求めます。"
+        }
+      ],
+      "react-native-google-mobile-ads"
     ],
     "experiments": {
       "typedRoutes": true
