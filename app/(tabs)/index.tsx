@@ -1,6 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import dayjs from 'dayjs';
+// ✅ これに置き換え
 // import { AdMobBanner } from 'expo-ads-admob';
+
+
+
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
 import {
@@ -141,15 +145,16 @@ export default function CalendarScreen() {
             {selectedMonth} の合計損益: {totalProfit >= 0 ? `+${totalProfit}` : totalProfit} 円
           </Text>
         </View>
-      </ScrollView>
 
-      <Text>広告バナー表示例</Text>
+        <Text>広告バナー表示例</Text>
       {/* <AdMobBanner
         bannerSize="fullBanner"
-        adUnitID="ca-app-pub-3940256099942544/6300978111" // テスト用ID
-        servePersonalizedAds={true} // 個人情報広告ON/OFF
-        onDidFailToReceiveAdWithError={(error) => console.error('Ad error:', error)}
+        adUnitID="ca-app-pub-3940256099942544/6300978111" // テストID
+        servePersonalizedAds={false}
       /> */}
+      </ScrollView>
+
+
     </SafeAreaView>
 
   );

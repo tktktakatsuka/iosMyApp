@@ -6,19 +6,49 @@ import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 
 import { PieChart } from 'react-native-chart-kit';
 
 type ProfitItem = {
-  amount: number;
+  id: string;
+  date: string;
   categoryId?: string;
-  type: 'income' | 'expense';
+  amount: number;
+  memo?: string;
+  type?: 'income' | 'expense';
 };
 
 type ProfitData = Record<string, ProfitItem>;
 
+const categories = [
+  { id: 'food', label: '食費' },
+  { id: 'clothes', label: '衣服' },
+  { id: 'hobby', label: '趣味' },
+  { id: 'transport', label: '交通費' },
+  { id: 'daily', label: '生活用品' },
+  { id: 'social', label: '交際費' },
+  { id: 'rent', label: '家賃' },
+  { id: 'communication', label: '通信費' },
+  { id: 'salary', label: '給料' },
+  { id: 'other_expense', label: 'その他支出' },
+  { id: 'other_income', label: 'その他収入' },
+];
+
+const categoryLabels = categories.reduce((map, item) => {
+  map[item.id] = item.label;
+  return map;
+}, {} as Record<string, string>);
+
+
+
 const categoryColors: Record<string, string> = {
-  salary: '#4caf50',
-  food: '#f44336',
-  shopping: '#ff9800',
-  entertainment: '#9c27b0',
-  other: '#607d8b',
+  food: '#FDD835',
+  clothes: '#42A5F5',
+  hobby: '#AB47BC',
+  transport: '#26C6DA',
+  daily: '#66BB6A',
+  social: '#FFA726',
+  rent: '#EF5350',
+  communication: '#7E57C2',
+  salary: '#29B6F6',
+  other_expense: '#BDBDBD',
+  other_income: '#BDBDBD',
 };
 
 export default function ReportScreen() {
@@ -31,7 +61,8 @@ export default function ReportScreen() {
   const [totalExpense, setTotalExpense] = useState<number>(0);
   const [totalIncome, setTotalIncome] = useState<number>(0);
 
-  // 予算入力関連は残してますが表示には使いません
+  const [selectedType, setSelectedType] = useState<'income' | 'expense'>('income');
+
   const [budget, setBudget] = useState<number>(65300);
   const [budgetInput, setBudgetInput] = useState<string>('65300');
 
@@ -56,7 +87,8 @@ export default function ReportScreen() {
   useEffect(() => {
     const filteredEntries = Object.entries(profitData)
       .filter(([date]) => date.startsWith(selectedMonth))
-      .map(([, item]) => item);
+      .map(([, item]) => item)
+      .filter(item => item.type === selectedType);
 
     const grouped: Record<string, number> = {};
     filteredEntries.forEach(item => {
@@ -79,21 +111,21 @@ export default function ReportScreen() {
 
     setPieData(data);
 
-    const expenseSum = filteredEntries
-      .filter(item => item.type === 'expense')
+    const expenseSum = Object.values(profitData)
+      .filter(item => item.type === 'expense' && dayjs(item.date).format('YYYY-MM') === selectedMonth)
       .reduce((sum, item) => sum + Math.abs(item.amount), 0);
-    const incomeSum = filteredEntries
-      .filter(item => item.type === 'income')
+
+    const incomeSum = Object.values(profitData)
+      .filter(item => item.type === 'income' && dayjs(item.date).format('YYYY-MM') === selectedMonth)
       .reduce((sum, item) => sum + Math.abs(item.amount), 0);
 
     setTotalExpense(expenseSum);
     setTotalIncome(incomeSum);
-  }, [profitData, selectedMonth]);
+  }, [profitData, selectedMonth, selectedType]);
 
   const displayMonthJP = dayjs(selectedMonth).format('YYYY年M月');
   const period = `${displayMonthJP}1日 〜 ${displayMonthJP}末日`;
 
-  // 収支計算
   const balance = totalIncome - totalExpense;
 
   const chartWidth = 200;
@@ -115,7 +147,6 @@ export default function ReportScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.summaryContainer}>
-          {/* ここを収入−支出で計算して表示 */}
           <Text style={styles.availableText}>あと ￥{balance.toLocaleString()} 使えます</Text>
           <Text style={styles.remainingText}>残り16日 1日あたり ￥0</Text>
         </View>
@@ -155,9 +186,25 @@ export default function ReportScreen() {
           </Text>
         </View>
 
-        <TouchableOpacity style={styles.dropdown}>
-          <Text>カテゴリ別収入 ⌄</Text>
-        </TouchableOpacity>
+        {/* ▼ 収支切替トグル */}
+        <View style={{ flexDirection: 'row', justifyContent: 'center', marginVertical: 10 }}>
+          <TouchableOpacity
+            style={[styles.toggleButton, selectedType === 'expense' && { backgroundColor: '#ddd' }]}
+            onPress={() => setSelectedType('expense')}
+          >
+            <Text style={selectedType === 'expense' ? styles.toggleTextSelected : styles.toggleText}>
+              支出
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleButton, selectedType === 'income' && { backgroundColor: '#ddd' }]}
+            onPress={() => setSelectedType('income')}
+          >
+            <Text style={selectedType === 'income' ? styles.toggleTextSelected : styles.toggleText}>
+              収入
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={{ position: 'relative', width: chartWidth, height: chartHeight, alignSelf: 'center' }}>
           <PieChart
@@ -171,7 +218,7 @@ export default function ReportScreen() {
             hasLegend={false}
           />
           <View style={styles.centeredTextWrapper}>
-            <Text style={styles.centeredText}>カテゴリ別収入</Text>
+            <Text style={styles.centeredText}>カテゴリ別{selectedType === 'income' ? '収入' : '支出'}</Text>
           </View>
         </View>
 
@@ -179,9 +226,10 @@ export default function ReportScreen() {
           {pieData.map(({ name, color }) => (
             <View key={name} style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: 8, marginVertical: 4 }}>
               <View style={{ width: 16, height: 16, backgroundColor: color, borderRadius: 4, marginRight: 6 }} />
-              <Text>{name}</Text>
+              <Text>{categoryLabels[name] ?? name ?? ''}</Text>
             </View>
           ))}
+
         </View>
 
         <View style={styles.dateSelector}>
@@ -201,7 +249,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', justifyContent: 'space-between', paddingTop: 60, paddingHorizontal: 20, alignItems: 'center',
   },
-  toggleButton: { paddingHorizontal: 16, paddingVertical: 8 },
+  toggleButton: { paddingHorizontal: 16, paddingVertical: 8, marginHorizontal: 6, borderRadius: 6 },
   toggleTextSelected: { fontSize: 16, fontWeight: 'bold', color: '#000' },
   toggleText: { fontSize: 16, color: '#888' },
   settings: { padding: 8 },
@@ -223,13 +271,8 @@ const styles = StyleSheet.create({
   balanceLabel: { fontSize: 14, color: '#555' },
   balanceAmount: { fontSize: 20, fontWeight: 'bold' },
   dropdown: { backgroundColor: '#f5f5f5', marginHorizontal: 16, borderRadius: 8, padding: 10, marginVertical: 8, alignItems: 'center' },
-  chartWrapper: { alignItems: 'center', marginVertical: 20 },
-  chartPlaceholder: { backgroundColor: '#fcb900', width: 200, height: 200, borderRadius: 100, justifyContent: 'center', alignItems: 'center' },
-  chartText: { fontWeight: 'bold', color: '#333' },
-  totalText: { fontSize: 18, fontWeight: 'bold', marginTop: 8, marginBottom: 24, color: '#333' },
   dateSelector: { flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: 32, marginTop: 12 },
   dateRange: { textAlign: 'center', color: '#888', fontSize: 14, marginTop: 4, marginBottom: 20 },
   centeredTextWrapper: { position: 'absolute', top: '42%', left: 0, right: 0, alignItems: 'center' },
   centeredText: { fontSize: 16, color: '#333', fontWeight: '600' },
-  centeredAmount: { fontSize: 20, fontWeight: 'bold', color: '#333' },
 });

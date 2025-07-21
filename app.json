@@ -8,11 +8,12 @@
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.s.takatsuka.MyApp",
       "infoPlist": {
-        "GADApplicationIdentifier": "ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy",
+        "GADApplicationIdentifier": "ca-app-pub-4855274440005459~3152347682",
         "NSUserTrackingUsageDescription": "このアプリは広告の効果を向上させるためにトラッキングを利用します。",
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "写真を撮影して収支記録に添付するためにカメラを使用します。",
@@ -45,6 +46,7 @@
       [
         "expo-ads-admob",
         {
+          "iosAdMobAppId": "ca-app-pub-4855274440005459~3152347682",
           "userTrackingPermission": "このアプリでは広告のパーソナライズのためにトラッキング許可を求めます。"
         }
       ],
