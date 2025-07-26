@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import dayjs from 'dayjs';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
 
 type ProfitItem = {
@@ -63,8 +63,6 @@ export default function ReportScreen() {
 
   const [selectedType, setSelectedType] = useState<'income' | 'expense'>('income');
 
-  const [budget, setBudget] = useState<number>(65300);
-  const [budgetInput, setBudgetInput] = useState<string>('65300');
 
   useFocusEffect(
     useCallback(() => {
@@ -160,19 +158,7 @@ export default function ReportScreen() {
             <Text style={styles.cardTitle}>収入</Text>
             <Text style={styles.cardAmountBlue}>¥{totalIncome.toLocaleString()}</Text>
           </View>
-          <View style={styles.cardGreen}>
-            <Text style={styles.cardTitle}>予算</Text>
-            <TextInput
-              style={styles.cardAmountGreen}
-              value={budgetInput}
-              keyboardType="numeric"
-              onChangeText={(text) => {
-                setBudgetInput(text);
-                const parsed = parseInt(text, 10);
-                if (!isNaN(parsed)) setBudget(parsed);
-              }}
-            />
-          </View>
+
           <View style={styles.cardGray}>
             <Text style={styles.cardTitle}>収支</Text>
             <Text style={styles.cardAmountGray}>¥{balance.toLocaleString()}</Text>

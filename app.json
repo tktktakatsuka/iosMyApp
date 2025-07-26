@@ -42,15 +42,7 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ],
-      [
-        "expo-ads-admob",
-        {
-          "iosAdMobAppId": "ca-app-pub-4855274440005459~3152347682",
-          "userTrackingPermission": "このアプリでは広告のパーソナライズのためにトラッキング許可を求めます。"
-        }
-      ],
-      "react-native-google-mobile-ads"
+      ]
     ],
     "experiments": {
       "typedRoutes": true

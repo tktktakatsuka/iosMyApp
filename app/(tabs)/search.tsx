@@ -67,7 +67,7 @@ export default function IncomeListScreen() {
               amount: item.amount,
               categoryId: item.categoryId,
               type: item.type,
-              memo: '',
+              memo: item.memo || '',
             }));
             setItems(parsed);
           }
@@ -79,7 +79,6 @@ export default function IncomeListScreen() {
     }, [])
   );
 
-  // フィルター後のデータ
   const filteredItems = items.filter((item) => {
     const itemDate = dayjs(item.date);
     const inRange = itemDate.isSameOrAfter(fromDate, 'day') && itemDate.isSameOrBefore(toDate, 'day');
@@ -87,14 +86,12 @@ export default function IncomeListScreen() {
     return inRange && typeMatch;
   });
 
-  // 日付でグループ化
   const grouped = filteredItems.reduce<Record<string, ProfitItem[]>>((acc, item) => {
     if (!acc[item.date]) acc[item.date] = [];
     acc[item.date].push(item);
     return acc;
   }, {});
 
-  // レンダラーをメモ化してパフォーマンス向上
   const RenderEntry = memo(({ item }: { item: ProfitItem }) => {
     const { iconName, color } = getIconInfo(item.categoryId);
     return (
@@ -114,7 +111,6 @@ export default function IncomeListScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {/* 日付ピッカー */}
         <TouchableOpacity onPress={() => setFromPickerVisible(true)}>
           <Text style={styles.datePickerText}>開始日: {fromDate.format('YYYY-MM-DD')}</Text>
         </TouchableOpacity>
@@ -145,7 +141,6 @@ export default function IncomeListScreen() {
           onCancel={() => setToPickerVisible(false)}
         />
 
-        {/* タブ */}
         <View style={styles.tabRow}>
           <TouchableOpacity onPress={() => setFilterType('expense')}>
             <Text style={[styles.tab, filterType === 'expense' && styles.selectedTab]}>支出</Text>
@@ -158,7 +153,6 @@ export default function IncomeListScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* 一覧表示 */}
         <FlatList
           data={Object.entries(grouped)}
           keyExtractor={([date]) => date}

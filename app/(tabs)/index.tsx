@@ -1,8 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import dayjs from 'dayjs';
-// ✅ これに置き換え
-// import { AdMobBanner } from 'expo-ads-admob';
-
 
 
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -38,7 +35,7 @@ type ProfitData = Record<string, ProfitItem>;
 
 export default function CalendarScreen() {
   const router = useRouter();
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(dayjs().format('YYYY-MM-DD'));
   const [profitData, setProfitData] = useState<ProfitData>({});
   const lastTappedDate = useRef<string | null>(null);
 
@@ -112,16 +109,21 @@ export default function CalendarScreen() {
               setSelectedDate(firstDayOfMonth);
             }
           }}
-          markedDates={selectedDate ? { [selectedDate]: { selected: true, selectedColor: '#00adf5' } } : {}}
+
           dayComponent={({ date, state }) => {
             if (!date) return null;
             const profitItem = profitData[date.dateString];
             const isSelected = selectedDate === date.dateString;
+
             const amount = profitItem?.amount;
 
             return (
               <TouchableOpacity onPress={() => handleDayPress(date)}>
-                <View style={[styles.dayContainer, { width: dayCellWidth }, isSelected && styles.selectedDay]}>
+                <View style={[
+                  styles.dayContainer,
+                  { width: dayCellWidth },
+                  isSelected ? styles.selectedDay : null
+                ]}>
                   <Text style={[styles.dayText, state === 'disabled' && styles.disabledText]}>
                     {date.day}
                   </Text>
@@ -146,12 +148,6 @@ export default function CalendarScreen() {
           </Text>
         </View>
 
-        <Text>広告バナー表示例</Text>
-      {/* <AdMobBanner
-        bannerSize="fullBanner"
-        adUnitID="ca-app-pub-3940256099942544/6300978111" // テストID
-        servePersonalizedAds={false}
-      /> */}
       </ScrollView>
 
 
@@ -200,5 +196,9 @@ const styles = StyleSheet.create({
   selectedProfitText: {
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  todayBox: {
+    backgroundColor: '#00adf5',
+    borderRadius: 4,
   },
 });

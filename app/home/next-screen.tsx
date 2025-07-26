@@ -36,7 +36,9 @@ export default function NextScreen() {
     { id: 'rent', label: '家賃', iconName: 'home', color: '#EF5350' },
     { id: 'communication', label: '通信費', iconName: 'wifi', color: '#7E57C2' },
     { id: 'salary', label: '給料', iconName: 'wallet', color: '#29B6F6' },
+    { id: 'side_job', label: '副業', iconName: 'bicycle', color: '#AB47BC' },
     { id: 'other', label: 'その他', iconName: 'ellipsis-horizontal-circle', color: '#BDBDBD' }
+
   ];
   
 
