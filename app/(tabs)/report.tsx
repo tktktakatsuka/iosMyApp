@@ -7,14 +7,13 @@ import { PieChart } from 'react-native-chart-kit';
 
 type ProfitItem = {
   id: string;
-  date: string;
   categoryId?: string;
   amount: number;
   memo?: string;
   type?: 'income' | 'expense';
 };
 
-type ProfitData = Record<string, ProfitItem>;
+type ProfitData = Record<string, ProfitItem>; // keyは日付文字列（YYYY-MM-DD）
 
 const categories = [
   { id: 'food', label: '食費' },
@@ -34,8 +33,6 @@ const categoryLabels = categories.reduce((map, item) => {
   map[item.id] = item.label;
   return map;
 }, {} as Record<string, string>);
-
-
 
 const categoryColors: Record<string, string> = {
   food: '#FDD835',
@@ -63,6 +60,13 @@ export default function ReportScreen() {
 
   const [selectedType, setSelectedType] = useState<'income' | 'expense'>('income');
 
+  const handlePrevMonth = () => {
+    setSelectedMonth(prev => dayjs(prev).subtract(1, 'month').format('YYYY-MM'));
+  };
+  
+  const handleNextMonth = () => {
+    setSelectedMonth(prev => dayjs(prev).add(1, 'month').format('YYYY-MM'));
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -83,16 +87,17 @@ export default function ReportScreen() {
   );
 
   useEffect(() => {
+    // profitData は日付キー: ProfitItem の構造なので、
+    // 日付キーを使って月で絞り込み、種別で絞り込み
     const filteredEntries = Object.entries(profitData)
       .filter(([date]) => date.startsWith(selectedMonth))
-      .map(([, item]) => item)
-      .filter(item => item.type === selectedType);
+      .filter(([, item]) => item.type === selectedType);
 
+    // カテゴリ別合計作成
     const grouped: Record<string, number> = {};
-    filteredEntries.forEach(item => {
+    filteredEntries.forEach(([_, item]) => {
       const id = item.categoryId ?? 'other';
-      const amount = Math.abs(item.amount);
-      grouped[id] = (grouped[id] || 0) + amount;
+      grouped[id] = (grouped[id] || 0) + Math.abs(item.amount);
     });
 
     const entries = Object.entries(grouped);
@@ -109,12 +114,17 @@ export default function ReportScreen() {
 
     setPieData(data);
 
-    const expenseSum = Object.values(profitData)
-      .filter(item => item.type === 'expense' && dayjs(item.date).format('YYYY-MM') === selectedMonth)
+    // 収入・支出合計計算
+    const allItems = Object.entries(profitData)
+      .filter(([date]) => date.startsWith(selectedMonth))
+      .map(([, item]) => item);
+
+    const expenseSum = allItems
+      .filter(item => item.type === 'expense')
       .reduce((sum, item) => sum + Math.abs(item.amount), 0);
 
-    const incomeSum = Object.values(profitData)
-      .filter(item => item.type === 'income' && dayjs(item.date).format('YYYY-MM') === selectedMonth)
+    const incomeSum = allItems
+      .filter(item => item.type === 'income')
       .reduce((sum, item) => sum + Math.abs(item.amount), 0);
 
     setTotalExpense(expenseSum);
@@ -217,12 +227,18 @@ export default function ReportScreen() {
           ))}
 
         </View>
-
         <View style={styles.dateSelector}>
-          <Text>← 先月</Text>
+          <TouchableOpacity onPress={handlePrevMonth}>
+            <Text>← 先月</Text>
+          </TouchableOpacity>
+
           <Text>{displayMonthJP}</Text>
-          <Text>翌月 →</Text>
+
+          <TouchableOpacity onPress={handleNextMonth}>
+            <Text>翌月 →</Text>
+          </TouchableOpacity>
         </View>
+
         <Text style={styles.dateRange}>{period}</Text>
       </ScrollView>
     </View>
@@ -244,21 +260,86 @@ const styles = StyleSheet.create({
   availableText: { fontSize: 20, fontWeight: 'bold' },
   remainingText: { fontSize: 14, color: '#555' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around', marginTop: 12 },
-  cardRed: { backgroundColor: '#ffe5e5', width: '45%', padding: 12, borderRadius: 10, marginVertical: 8 },
-  cardBlue: { backgroundColor: '#e5f0ff', width: '45%', padding: 12, borderRadius: 10, marginVertical: 8 },
-  cardGreen: { backgroundColor: '#e0fbe0', width: '45%', padding: 12, borderRadius: 10, marginVertical: 8 },
-  cardGray: { backgroundColor: '#f0f0f0', width: '45%', padding: 12, borderRadius: 10, marginVertical: 8 },
-  cardTitle: { fontSize: 14, color: '#555' },
-  cardAmountRed: { fontSize: 18, fontWeight: 'bold', color: '#ff3333' },
-  cardAmountBlue: { fontSize: 18, fontWeight: 'bold', color: '#007bff' },
-  cardAmountGreen: { fontSize: 18, fontWeight: 'bold', color: '#2e7d32' },
-  cardAmountGray: { fontSize: 18, fontWeight: 'bold', color: '#888' },
-  balanceContainer: { backgroundColor: '#fff', marginHorizontal: 16, borderRadius: 8, padding: 16, marginVertical: 12, alignItems: 'center' },
-  balanceLabel: { fontSize: 14, color: '#555' },
-  balanceAmount: { fontSize: 20, fontWeight: 'bold' },
-  dropdown: { backgroundColor: '#f5f5f5', marginHorizontal: 16, borderRadius: 8, padding: 10, marginVertical: 8, alignItems: 'center' },
-  dateSelector: { flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: 32, marginTop: 12 },
-  dateRange: { textAlign: 'center', color: '#888', fontSize: 14, marginTop: 4, marginBottom: 20 },
-  centeredTextWrapper: { position: 'absolute', top: '42%', left: 0, right: 0, alignItems: 'center' },
-  centeredText: { fontSize: 16, color: '#333', fontWeight: '600' },
+  cardRed: {
+    backgroundColor: '#ffe5e5',
+    width: '45%',
+    padding: 12,
+    borderRadius: 10,
+    marginVertical: 8,
+  },
+  cardBlue: {
+    backgroundColor: '#e5f0ff',
+    width: '45%',
+    padding: 12,
+    borderRadius: 10,
+    marginVertical: 8,
+  },
+  cardGray: {
+    backgroundColor: '#f0f0f0',
+    width: '45%',
+    padding: 12,
+    borderRadius: 10,
+    marginVertical: 8,
+  },
+  cardTitle: {
+    fontSize: 14,
+    color: '#555',
+  },
+  cardAmountRed: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ff3333',
+  },
+  cardAmountBlue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#007bff',
+  },
+  cardAmountGray: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#888',
+  },
+  balanceContainer: {
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    borderRadius: 8,
+    padding: 16,
+    marginVertical: 12,
+    alignItems: 'center',
+  },
+  balanceLabel: {
+    fontSize: 14,
+    color: '#555',
+  },
+  balanceAmount: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  dateSelector: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingHorizontal: 32,
+    marginTop: 12,
+  },
+  dateRange: {
+    textAlign: 'center',
+    color: '#888',
+    fontSize: 14,
+    marginTop: 4,
+    marginBottom: 20,
+  },
+  centeredTextWrapper: {
+    position: 'absolute',
+    top: '42%',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  centeredText: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '600',
+  },
 });
+

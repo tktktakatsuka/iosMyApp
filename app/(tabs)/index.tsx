@@ -58,6 +58,8 @@ export default function CalendarScreen() {
   const loadProfitData = async () => {
     try {
       const json = await AsyncStorage.getItem('profitData');
+      // 保存前にログ
+console.log(json)
       if (json) {
         setProfitData(JSON.parse(json));
       }

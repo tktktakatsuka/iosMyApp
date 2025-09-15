@@ -40,7 +40,7 @@ export default function NextScreen() {
     { id: 'other', label: 'その他', iconName: 'ellipsis-horizontal-circle', color: '#BDBDBD' }
 
   ];
-  
+
 
 
   const loadProfit = async (targetDate: string) => {
@@ -121,14 +121,22 @@ export default function NextScreen() {
         </View>
 
 
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            value={amount}
+            onChangeText={setAmount}
+            keyboardType="number-pad"
+            placeholder="例: 2000"
+          />
 
-        <TextInput
-          style={styles.input}
-          value={amount}
-          onChangeText={setAmount}
-          keyboardType="number-pad"
-          placeholder="例: 2000"
-        />
+          <TouchableOpacity
+            onPress={() => setAmount('0')}
+            style={styles.clearButton}
+          >
+            <Text style={styles.clearButtonText}>✕</Text>
+          </TouchableOpacity>
+        </View>
 
         <Text style={styles.label}>カテゴリを選択</Text>
 
@@ -179,12 +187,9 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   input: {
-    borderColor: 'gray',
-    borderWidth: 1,
-    padding: 12,
+    flex: 1, // ← 残りの幅をすべて使う
+    paddingVertical: 8,
     fontSize: 16,
-    marginBottom: 20,
-    borderRadius: 6,
   },
   icon: {
     width: 40,
@@ -213,5 +218,22 @@ const styles = StyleSheet.create({
   toggleText: {
     color: '#333',
     fontWeight: 'bold',
+  },
+  inputContainer: {
+    flexDirection: 'row', // ← 横並びにする！
+    alignItems: 'center', // 縦方向の位置を揃える
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    margin: 16,
+  },
+
+  clearButton: {
+    padding: 8,
+  },
+  clearButtonText: {
+    fontSize: 16,
+    color: '#888',
   },
 });
