@@ -2,22 +2,21 @@
   "expo": {
     "name": "収支管理アプリ コツコツ貯めよう",
     "slug": "MyApp",
-    "version": "1.1.1",
+    "version": "1.1.2",
     "orientation": "portrait",
     "icon": "./assets/images/profitDataIcon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.s.takatsuka.MyApp",
-      "buildNumber": "2", 
+      "buildNumber": "3",
       "infoPlist": {
+        "CFBundleDisplayName": "収支管理アプリ コツコツ貯めよう",
         "GADApplicationIdentifier": "ca-app-pub-4855274440005459~3152347682",
-        "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "写真を撮影して収支記録に添付するためにカメラを使用します。",
-        "CFBundleDisplayName": "収支管理アプリ コツコツ貯めよう"
+        "NSUserTrackingUsageDescription": "広告配信や分析のためにユーザーを識別する目的でトラッキングします。",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -25,7 +24,8 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.s.takatsuka.MyApp"
     },
     "web": {
       "bundler": "metro",

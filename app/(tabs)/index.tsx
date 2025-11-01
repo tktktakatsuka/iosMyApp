@@ -59,7 +59,7 @@ export default function CalendarScreen() {
     try {
       const json = await AsyncStorage.getItem('profitData');
       // 保存前にログ
-console.log(json)
+      console.log(json)
       if (json) {
         setProfitData(JSON.parse(json));
       }
@@ -150,7 +150,10 @@ console.log(json)
           </Text>
         </View>
 
+        {/* <AdBanner size="LARGE_BANNER" /> */}
+
       </ScrollView>
+
 
 
     </SafeAreaView>
