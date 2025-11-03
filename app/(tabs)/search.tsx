@@ -38,19 +38,22 @@ const categoryMap: Record<string, { iconName: keyof typeof Ionicons.glyphMap; co
   social: { iconName: 'people', color: '#FFA726' },
   rent: { iconName: 'home', color: '#EF5350' },
   communication: { iconName: 'wifi', color: '#7E57C2' },
+  salary: { iconName: 'wallet', color: '#29B6F6' },
+  side_job: { iconName: 'bicycle', color: '#AB47BC' },
+  other: { iconName: 'ellipsis-horizontal-circle', color: '#BDBDBD' }
 };
 
 const getIconInfo = (categoryId?: string) => {
   return categoryMap[categoryId ?? ''] ?? { iconName: 'help-circle', color: 'gray' };
 };
-
-type ProfitData = Record<string, ProfitItem>;
+// 修正: ProfitDataの型定義をNextScreenと合わせる
+type ProfitData = Record<string, ProfitItem[]>; // 日付をキーとし、値がProfitItemの配列
 
 export default function IncomeListScreen() {
   const [items, setItems] = useState<ProfitItem[]>([]);
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
-  const [fromDate, setFromDate] = useState(dayjs('2025-07-01'));
-  const [toDate, setToDate] = useState(dayjs('2025-07-31'));
+  const [fromDate, setFromDate] = useState(dayjs().startOf('month'));
+  const [toDate, setToDate] = useState(dayjs().endOf('month'));
   const [isFromPickerVisible, setFromPickerVisible] = useState(false);
   const [isToPickerVisible, setToPickerVisible] = useState(false);
 
@@ -61,15 +64,33 @@ export default function IncomeListScreen() {
           const json = await AsyncStorage.getItem('profitData');
           if (json) {
             const rawData: ProfitData = JSON.parse(json);
-            const parsed: ProfitItem[] = Object.entries(rawData).map(([date, item]) => ({
-              id: date,
-              date,
-              amount: item.amount,
-              categoryId: item.categoryId,
-              type: item.type,
-              memo: item.memo || '',
-            }));
-            setItems(parsed);
+            
+            // 修正: rawDataがRecord<string, ProfitItem[]>なので、それをフラットにする
+            const allItems: ProfitItem[] = [];
+            Object.entries(rawData).forEach(([date, dailyItems]) => {
+              if (Array.isArray(dailyItems)) { // dailyItemsが配列であることを確認
+                dailyItems.forEach(item => {
+                  allItems.push({
+                    ...item,
+                    date: date, // item自体にはdateプロパティがない可能性があるので、キーのdateを追加
+                    memo: item.memo || '', // memoがundefinedの場合に空文字列を設定
+                    type: item.type || 'expense', // typeがundefinedの場合にデフォルト値を設定 (適宜調整)
+                  });
+                });
+              } else {
+                 // 旧形式のデータ（単一のProfitItem）が直接日付に紐付いている場合への対応
+                 const oldItem = dailyItems as ProfitItem;
+                 if (oldItem.amount !== undefined) {
+                     allItems.push({
+                         ...oldItem,
+                         date: date,
+                         memo: oldItem.memo || '',
+                         type: oldItem.type || 'expense',
+                     });
+                 }
+              }
+            });
+            setItems(allItems);
           }
         } catch (e) {
           console.error('読み込み失敗:', e);
@@ -80,7 +101,7 @@ export default function IncomeListScreen() {
   );
 
   const filteredItems = items.filter((item) => {
-    const itemDate = dayjs(item.date);
+    const itemDate = dayjs(item.date); // item.dateが存在することを前提
     const inRange = itemDate.isSameOrAfter(fromDate, 'day') && itemDate.isSameOrBefore(toDate, 'day');
     const typeMatch = filterType === 'all' || item.type === filterType;
     return inRange && typeMatch;
@@ -103,10 +124,12 @@ export default function IncomeListScreen() {
           </Text>
           {item.memo ? <Text style={styles.memo}>{item.memo}</Text> : null}
         </View>
-        <Text style={styles.date}>{item.date}</Text>
+        {/* RenderEntryではitem.dateではなく、グループのdateを使っているのでここは削除するか、適切なdateを表示するように変更が必要 */}
+        {/* <Text style={styles.date}>{item.date}</Text> */} 
       </View>
     );
   });
+
 
   return (
     <SafeAreaView style={styles.safeArea}>

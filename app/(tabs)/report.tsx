@@ -1,80 +1,100 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Picker } from '@react-native-picker/picker'; // 月選択用にPickerをインポート
 import { useFocusEffect } from '@react-navigation/native';
 import dayjs from 'dayjs';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
 
+// ProfitItem の型定義にidを追加 (GraphScreenやCalendarScreenと一貫性を保つため)
 type ProfitItem = {
-  id: string;
+  id: string; // 各項目を一意に識別するためのID
   categoryId?: string;
   amount: number;
   memo?: string;
-  type?: 'income' | 'expense';
+  type?: 'income' | 'expense'; // typeが未定義の場合のデフォルト値を設定できるように任意型に
 };
 
-type ProfitData = Record<string, ProfitItem>; // keyは日付文字列（YYYY-MM-DD）
+// ProfitData の型定義を ProfitItem の配列を保持するように変更
+type ProfitData = Record<string, ProfitItem[]>; // keyは日付文字列（YYYY-MM-DD）
 
 const categories = [
-  { id: 'food', label: '食費' },
-  { id: 'clothes', label: '衣服' },
-  { id: 'hobby', label: '趣味' },
-  { id: 'transport', label: '交通費' },
-  { id: 'daily', label: '生活用品' },
-  { id: 'social', label: '交際費' },
-  { id: 'rent', label: '家賃' },
-  { id: 'communication', label: '通信費' },
-  { id: 'salary', label: '給料' },
-  { id: 'other_expense', label: 'その他支出' },
-  { id: 'other_income', label: 'その他収入' },
+  { id: 'food', label: '食費', color: '#FDD835' },
+  { id: 'clothes', label: '衣服', color: '#42A5F5' },
+  { id: 'hobby', label: '趣味', color: '#AB47BC' },
+  { id: 'transport', label: '交通費', color: '#26C6DA' },
+  { id: 'daily', label: '生活用品', color: '#66BB6A' },
+  { id: 'social', label: '交際費', color: '#FFA726' },
+  { id: 'rent', label: '家賃', color: '#EF5350' },
+  { id: 'communication', label: '通信費', color: '#7E57C2' },
+  { id: 'salary', label: '給料', color: '#29B6F6' },
+  { id: 'other_expense', label: 'その他支出', color: '#BDBDBD' },
+  { id: 'other_income', label: 'その他収入', color: '#BDBDBD' },
+  // 未分類項目用のデフォルトカラー
+  { id: 'other', label: '未分類', color: '#999999' },
 ];
 
-const categoryLabels = categories.reduce((map, item) => {
-  map[item.id] = item.label;
+const categoryInfo = categories.reduce((map, item) => {
+  map[item.id] = item;
   return map;
-}, {} as Record<string, string>);
+}, {} as Record<string, { id: string; label: string; color: string }>);
 
-const categoryColors: Record<string, string> = {
-  food: '#FDD835',
-  clothes: '#42A5F5',
-  hobby: '#AB47BC',
-  transport: '#26C6DA',
-  daily: '#66BB6A',
-  social: '#FFA726',
-  rent: '#EF5350',
-  communication: '#7E57C2',
-  salary: '#29B6F6',
-  other_expense: '#BDBDBD',
-  other_income: '#BDBDBD',
-};
+const screenWidth = Dimensions.get('window').width;
 
 export default function ReportScreen() {
   const [profitData, setProfitData] = useState<ProfitData>({});
   const [selectedMonth, setSelectedMonth] = useState(dayjs().format('YYYY-MM'));
 
   const [pieData, setPieData] = useState<any[]>([]);
-  const [totalAmount, setTotalAmount] = useState<number>(0);
+  const [totalCategoryAmount, setTotalCategoryAmount] = useState<number>(0); // 円グラフに表示されている合計額
 
   const [totalExpense, setTotalExpense] = useState<number>(0);
   const [totalIncome, setTotalIncome] = useState<number>(0);
 
-  const [selectedType, setSelectedType] = useState<'income' | 'expense'>('income');
+  const [selectedType, setSelectedType] = useState<'income' | 'expense'>('expense'); // デフォルトを支出に変更
 
-  const handlePrevMonth = () => {
-    setSelectedMonth(prev => dayjs(prev).subtract(1, 'month').format('YYYY-MM'));
-  };
-  
-  const handleNextMonth = () => {
-    setSelectedMonth(prev => dayjs(prev).add(1, 'month').format('YYYY-MM'));
+  // Picker用の月リストを生成
+  const generateMonthItems = () => {
+    const items = [];
+    const currentYear = dayjs().year();
+    // 例: 現在の年から過去1年分と未来1年分の月を表示
+    for (let i = -12; i <= 12; i++) {
+      const month = dayjs().add(i, 'month');
+      const value = month.format('YYYY-MM');
+      const label = month.format('YYYY年M月');
+      items.push(<Picker.Item key={value} label={label} value={value} />);
+    }
+    return items;
   };
 
   useFocusEffect(
     useCallback(() => {
-      const loadData = async () => {
+      const loadProfitData = async () => {
         try {
           const json = await AsyncStorage.getItem('profitData');
           if (json) {
-            setProfitData(JSON.parse(json));
+            const rawData = JSON.parse(json);
+            let convertedData: ProfitData = {};
+
+            if (rawData && typeof rawData === 'object' && Object.keys(rawData).length > 0) {
+              for (const dateString in rawData) {
+                if (Object.prototype.hasOwnProperty.call(rawData, dateString)) {
+                  const value = rawData[dateString];
+
+                  if (Array.isArray(value)) {
+                    convertedData[dateString] = value;
+                  } else if (typeof value === 'object' && value !== null && 'amount' in value) {
+                    const itemWithId: ProfitItem = {
+                      ...value,
+                      id: value.id || dayjs(dateString).format('YYYYMMDDHHmmss') + Math.random().toString(36).substring(2, 10),
+                      type: value.type ?? 'expense' // typeがない場合はexpenseをデフォルトに
+                    };
+                    convertedData[dateString] = [itemWithId];
+                  }
+                }
+              }
+            }
+            setProfitData(convertedData);
           } else {
             setProfitData({});
           }
@@ -82,62 +102,70 @@ export default function ReportScreen() {
           console.error('データ読み込みエラー:', e);
         }
       };
-      loadData();
+      loadProfitData();
     }, [])
   );
 
   useEffect(() => {
-    // profitData は日付キー: ProfitItem の構造なので、
-    // 日付キーを使って月で絞り込み、種別で絞り込み
-    const filteredEntries = Object.entries(profitData)
+    // 全てのProfitItemをフラットな配列に変換
+    const allItemsInMonth: ProfitItem[] = Object.entries(profitData)
       .filter(([date]) => date.startsWith(selectedMonth))
-      .filter(([, item]) => item.type === selectedType);
+      .flatMap(([, items]) => items); // ここでProfitItem[]を展開
 
-    // カテゴリ別合計作成
+    // 収入・支出合計計算
+    const expenseSum = allItemsInMonth
+      .filter(item => item.type === 'expense')
+      .reduce((sum, item) => sum + Math.abs(item.amount), 0);
+
+    const incomeSum = allItemsInMonth
+      .filter(item => item.type === 'income')
+      .reduce((sum, item) => sum + Math.abs(item.amount), 0);
+
+    setTotalExpense(expenseSum);
+    setTotalIncome(incomeSum);
+
+    // 円グラフ用のカテゴリ別合計
+    const filteredForPieChart = allItemsInMonth
+      .filter(item => (item.type ?? 'expense') === selectedType); // typeが未定義ならexpense扱い
+
     const grouped: Record<string, number> = {};
-    filteredEntries.forEach(([_, item]) => {
-      const id = item.categoryId ?? 'other';
+    filteredForPieChart.forEach(item => {
+      const id = item.categoryId ?? 'other'; // categoryIdがない場合は'other'に分類
       grouped[id] = (grouped[id] || 0) + Math.abs(item.amount);
     });
 
     const entries = Object.entries(grouped);
     const total = entries.reduce((sum, [, amount]) => sum + amount, 0);
-    setTotalAmount(total);
+    setTotalCategoryAmount(total); // 円グラフに表示される合計
 
     const data = entries.map(([categoryId, amount]) => ({
-      name: categoryId,
+      name: categoryInfo[categoryId]?.label ?? categoryId, // ラベルを表示
       amount,
-      color: categoryColors[categoryId] || '#999999',
+      color: categoryInfo[categoryId]?.color || categoryInfo['other'].color,
       legendFontColor: '#333333',
       legendFontSize: 14,
     }));
 
     setPieData(data);
 
-    // 収入・支出合計計算
-    const allItems = Object.entries(profitData)
-      .filter(([date]) => date.startsWith(selectedMonth))
-      .map(([, item]) => item);
-
-    const expenseSum = allItems
-      .filter(item => item.type === 'expense')
-      .reduce((sum, item) => sum + Math.abs(item.amount), 0);
-
-    const incomeSum = allItems
-      .filter(item => item.type === 'income')
-      .reduce((sum, item) => sum + Math.abs(item.amount), 0);
-
-    setTotalExpense(expenseSum);
-    setTotalIncome(incomeSum);
   }, [profitData, selectedMonth, selectedType]);
 
   const displayMonthJP = dayjs(selectedMonth).format('YYYY年M月');
-  const period = `${displayMonthJP}1日 〜 ${displayMonthJP}末日`;
+  const monthStart = dayjs(selectedMonth).startOf('month');
+  const monthEnd = dayjs(selectedMonth).endOf('month');
+  const today = dayjs();
+
+  const remainingDaysInMonth = monthEnd.diff(today, 'day') + 1; // 今日を含む残り日数
 
   const balance = totalIncome - totalExpense;
+  const availableForRestOfMonth = totalIncome - totalExpense; // 月間の収支
 
-  const chartWidth = 200;
-  const chartHeight = 200;
+  // 1日あたりの使用可能額（残り日数が0以下になることも考慮）
+  const perDayAllowance = remainingDaysInMonth > 0 ? Math.max(0, availableForRestOfMonth / remainingDaysInMonth) : 0;
+
+
+  const chartSize = screenWidth * 0.7; // 画面幅の70%を使用
+  const pieChartRadius = chartSize / 2;
 
   return (
     <View style={styles.container}>
@@ -145,18 +173,31 @@ export default function ReportScreen() {
         <TouchableOpacity style={styles.toggleButton}>
           <Text style={styles.toggleTextSelected}>月別</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.toggleButton}>
+        {/* 年間機能はまだ実装されていないことを示す */}
+        <TouchableOpacity style={styles.toggleButton} onPress={() => alert('年間表示機能は準備中です！')}>
           <Text style={styles.toggleText}>年間</Text>
         </TouchableOpacity>
-        <View style={styles.settings}>
+        <TouchableOpacity style={styles.settings} onPress={() => alert('設定機能は準備中です！')}>
           <Text style={styles.settingsText}>設定</Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.summaryContainer}>
-          <Text style={styles.availableText}>あと ￥{balance.toLocaleString()} 使えます</Text>
-          <Text style={styles.remainingText}>残り16日 1日あたり ￥0</Text>
+          <Text style={styles.availableText}>
+            あと{' '}
+            <Text style={{ color: availableForRestOfMonth >= 0 ? '#2e7d32' : '#ff4444' }}>
+              ￥{availableForRestOfMonth.toLocaleString()}
+            </Text>{' '}
+            使えます
+          </Text>
+          {remainingDaysInMonth > 0 ? (
+            <Text style={styles.remainingText}>
+              残り{remainingDaysInMonth}日 1日あたり ￥{Math.round(perDayAllowance).toLocaleString()}
+            </Text>
+          ) : (
+            <Text style={styles.remainingText}>今月の残日数はありません。</Text>
+          )}
         </View>
 
         <View style={styles.grid}>
@@ -168,7 +209,6 @@ export default function ReportScreen() {
             <Text style={styles.cardTitle}>収入</Text>
             <Text style={styles.cardAmountBlue}>¥{totalIncome.toLocaleString()}</Text>
           </View>
-
           <View style={styles.cardGray}>
             <Text style={styles.cardTitle}>収支</Text>
             <Text style={styles.cardAmountGray}>¥{balance.toLocaleString()}</Text>
@@ -176,70 +216,88 @@ export default function ReportScreen() {
         </View>
 
         <View style={styles.balanceContainer}>
-          <Text style={styles.balanceLabel}>残り総資産</Text>
+          <Text style={styles.balanceLabel}>月間の収支</Text>
           <Text style={[styles.balanceAmount, { color: balance >= 0 ? '#2e7d32' : '#ff4444' }]}>
             ¥{balance.toLocaleString()}
           </Text>
         </View>
 
+        {/* 月選択 Picker */}
+        <View style={styles.monthPickerContainer}>
+          <Picker
+            selectedValue={selectedMonth}
+            onValueChange={(itemValue) => setSelectedMonth(itemValue)}
+            style={styles.monthPicker}
+            itemStyle={styles.monthPickerItem}
+          >
+            {generateMonthItems()}
+          </Picker>
+        </View>
+
         {/* ▼ 収支切替トグル */}
-        <View style={{ flexDirection: 'row', justifyContent: 'center', marginVertical: 10 }}>
+        <View style={styles.typeToggleButtonGroup}>
           <TouchableOpacity
-            style={[styles.toggleButton, selectedType === 'expense' && { backgroundColor: '#ddd' }]}
+            style={[styles.typeButton, selectedType === 'expense' && styles.typeButtonSelected]}
             onPress={() => setSelectedType('expense')}
           >
-            <Text style={selectedType === 'expense' ? styles.toggleTextSelected : styles.toggleText}>
+            <Text style={selectedType === 'expense' ? styles.typeButtonTextSelected : styles.typeButtonText}>
               支出
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.toggleButton, selectedType === 'income' && { backgroundColor: '#ddd' }]}
+            style={[styles.typeButton, selectedType === 'income' && styles.typeButtonSelected]}
             onPress={() => setSelectedType('income')}
           >
-            <Text style={selectedType === 'income' ? styles.toggleTextSelected : styles.toggleText}>
+            <Text style={selectedType === 'income' ? styles.typeButtonTextSelected : styles.typeButtonText}>
               収入
             </Text>
           </TouchableOpacity>
         </View>
 
-        <View style={{ position: 'relative', width: chartWidth, height: chartHeight, alignSelf: 'center' }}>
-          <PieChart
-            data={pieData}
-            width={chartWidth * 2}
-            height={chartHeight}
-            chartConfig={{ color: () => '#000', labelColor: () => '#000' }}
-            accessor="amount"
-            backgroundColor="transparent"
-            paddingLeft="0"
-            hasLegend={false}
-          />
+        <View style={{ position: 'relative', width: chartSize, height: chartSize, alignSelf: 'center' }}>
+          {pieData.length > 0 && totalCategoryAmount > 0 ? (
+            <PieChart
+              data={pieData}
+              width={chartSize}
+              height={chartSize}
+              chartConfig={{ color: () => '#000', labelColor: () => '#000' }}
+              accessor="amount"
+              backgroundColor="transparent"
+              paddingLeft={`${pieChartRadius * 0.1}`} // パディングを円のサイズに合わせて調整
+              center={[0, 0]} // チャートの中心
+              hasLegend={false}
+              absolute // 金額を絶対値で表示
+            />
+          ) : (
+            <View style={styles.noChartDataContainer}>
+              <Text style={styles.noChartDataText}>データがありません</Text>
+            </View>
+          )}
+
           <View style={styles.centeredTextWrapper}>
-            <Text style={styles.centeredText}>カテゴリ別{selectedType === 'income' ? '収入' : '支出'}</Text>
+            <Text style={styles.centeredLabelText}>カテゴリ別{selectedType === 'income' ? '収入' : '支出'}</Text>
+            <Text style={styles.centeredTotalText}>￥{totalCategoryAmount.toLocaleString()}</Text>
           </View>
         </View>
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginTop: 10 }}>
-          {pieData.map(({ name, color }) => (
-            <View key={name} style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: 8, marginVertical: 4 }}>
-              <View style={{ width: 16, height: 16, backgroundColor: color, borderRadius: 4, marginRight: 6 }} />
-              <Text>{categoryLabels[name] ?? name ?? ''}</Text>
+        {/* 凡例 */}
+        <View style={styles.legendContainer}>
+          {pieData.map((item, index) => (
+            <View key={index} style={styles.legendItem}>
+              <View style={[styles.legendColorBox, { backgroundColor: item.color }]} />
+              <Text style={styles.legendText}>
+                {item.name} ({((item.amount / totalCategoryAmount) * 100).toFixed(1)}%)
+              </Text>
             </View>
           ))}
-
-        </View>
-        <View style={styles.dateSelector}>
-          <TouchableOpacity onPress={handlePrevMonth}>
-            <Text>← 先月</Text>
-          </TouchableOpacity>
-
-          <Text>{displayMonthJP}</Text>
-
-          <TouchableOpacity onPress={handleNextMonth}>
-            <Text>翌月 →</Text>
-          </TouchableOpacity>
+          {pieData.length === 0 && (
+             <Text style={styles.legendNoDataText}>この月の{selectedType === 'income' ? '収入' : '支出'}データはありません。</Text>
+          )}
         </View>
 
-        <Text style={styles.dateRange}>{period}</Text>
+        <Text style={styles.dateRange}>
+          {monthStart.format('YYYY年M月D日')} 〜 {monthEnd.format('YYYY年M月D日')}
+        </Text>
       </ScrollView>
     </View>
   );
@@ -256,9 +314,11 @@ const styles = StyleSheet.create({
   toggleText: { fontSize: 16, color: '#888' },
   settings: { padding: 8 },
   settingsText: { fontSize: 14, color: '#555' },
+
   summaryContainer: { alignItems: 'center', marginTop: 16, marginBottom: 8 },
   availableText: { fontSize: 20, fontWeight: 'bold' },
   remainingText: { fontSize: 14, color: '#555' },
+
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around', marginTop: 12 },
   cardRed: {
     backgroundColor: '#ffe5e5',
@@ -316,30 +376,110 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
   },
-  dateSelector: {
+  monthPickerContainer: {
+    marginVertical: 10,
+    marginHorizontal: 16,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    overflow: 'hidden', // iOSでPickerの枠からはみ出るのを防ぐ
+  },
+  monthPicker: {
+    height: 50,
+    width: '100%',
+  },
+  monthPickerItem: {
+    height: 50,
+    fontSize: 16,
+  },
+  typeToggleButtonGroup: { // 収支切替ボタンのグループ
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: 32,
-    marginTop: 12,
+    justifyContent: 'center',
+    marginVertical: 10,
+    marginBottom: 20,
+  },
+  typeButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginHorizontal: 5,
+    backgroundColor: '#eee',
+  },
+  typeButtonSelected: {
+    backgroundColor: '#00adf5',
+  },
+  typeButtonText: {
+    color: '#555',
+    fontWeight: '600',
+  },
+  typeButtonTextSelected: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  centeredTextWrapper: {
+    position: 'absolute',
+    top: '50%', // 中心に配置
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    transform: [{ translateY: -20 }], // テキストの高さ分調整
+  },
+  centeredLabelText: {
+    fontSize: 14,
+    color: '#555',
+  },
+  centeredTotalText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 2,
+  },
+  noChartDataContainer: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)', // グラフがないことを示すため半透明の背景
+    borderRadius: Dimensions.get('window').width * 0.35, // 円の形に合わせる
+  },
+  noChartDataText: {
+    fontSize: 16,
+    color: '#888',
+  },
+  legendContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginTop: 20,
+    paddingHorizontal: 10,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 8,
+    marginVertical: 4,
+    width: '45%', // 2列表示
+  },
+  legendColorBox: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  legendText: {
+    fontSize: 13,
+    color: '#333',
+  },
+  legendNoDataText: {
+    fontSize: 14,
+    color: '#888',
+    marginTop: 10,
   },
   dateRange: {
     textAlign: 'center',
     color: '#888',
     fontSize: 14,
-    marginTop: 4,
+    marginTop: 10,
     marginBottom: 20,
   },
-  centeredTextWrapper: {
-    position: 'absolute',
-    top: '42%',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  centeredText: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '600',
-  },
 });
-

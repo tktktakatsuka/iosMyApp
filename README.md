@@ -1,4 +1,8 @@
 # Welcome to your Expo app 👋
+<key>GADApplicationIdentifier</key>
+<string>ca-app-pub-4855274440005459~3152347682</string>
+
+
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 

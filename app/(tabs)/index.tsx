@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import dayjs from 'dayjs';
+import AdBanner from '../../components/AdBanner';
 
 
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -25,13 +26,16 @@ LocaleConfig.locales['ja'] = {
 };
 LocaleConfig.defaultLocale = 'ja';
 
+// ProfitItem の型定義にidを追加
 type ProfitItem = {
+  id: string; // 各項目を一意に識別するためのID
   amount: number;
   categoryId?: string;
   type?: 'income' | 'expense';
 };
 
-type ProfitData = Record<string, ProfitItem>;
+// ProfitData の型定義を ProfitItem の配列を保持するように変更
+type ProfitData = Record<string, ProfitItem[]>;
 
 export default function CalendarScreen() {
   const router = useRouter();
@@ -41,12 +45,20 @@ export default function CalendarScreen() {
 
   const selectedMonth = selectedDate ? dayjs(selectedDate).format('YYYY-MM') : dayjs().format('YYYY-MM');
 
+  // 月の合計損益の計算ロジックを修正
   const totalProfit = Object.entries(profitData)
     .filter(([date]) => date.startsWith(selectedMonth))
-    .reduce((sum, [, item]) => {
-      const type = item.type ?? 'income';
-      const signedAmount = type === 'expense' ? -Math.abs(item.amount) : Math.abs(item.amount);
-      return sum + signedAmount;
+    .reduce((sum, [, items]) => {
+      // items が配列であることを確認し、そうでない場合は空の配列として扱う
+      const itemsArray = Array.isArray(items) ? items : [];
+
+      // その日のすべての項目を合計に追加
+      const dayTotal = itemsArray.reduce((daySum, item) => { // ここで itemsArray を使用
+        const type = item.type ?? 'income';
+        const signedAmount = type === 'expense' ? -Math.abs(item.amount) : Math.abs(item.amount);
+        return daySum + signedAmount;
+      }, 0);
+      return sum + dayTotal;
     }, 0);
 
   useFocusEffect(
@@ -58,10 +70,36 @@ export default function CalendarScreen() {
   const loadProfitData = async () => {
     try {
       const json = await AsyncStorage.getItem('profitData');
-      // 保存前にログ
-      console.log(json)
+      console.log('読み込みデータ:', json); // デバッグ用にログを追加
+
       if (json) {
-        setProfitData(JSON.parse(json));
+        const rawData = JSON.parse(json);
+        let convertedData: ProfitData = {};
+
+        // 読み込んだデータがオブジェクトであることを確認
+        if (rawData && typeof rawData === 'object' && Object.keys(rawData).length > 0) {
+          // 各日付のエントリをループ処理
+          for (const dateString in rawData) {
+            if (Object.prototype.hasOwnProperty.call(rawData, dateString)) {
+              const value = rawData[dateString];
+
+              if (Array.isArray(value)) {
+                // 既に新しい形式 (ProfitItem[]) の場合
+                convertedData[dateString] = value;
+              } else if (typeof value === 'object' && value !== null && 'amount' in value) {
+                // 旧形式 (単一の ProfitItem オブジェクト) の場合、配列にラップしてIDを追加
+                // IDがない場合は仮のIDを生成 (例: 日付+ランダム文字列)
+                const itemWithId: ProfitItem = { 
+                  ...value, 
+                  id: value.id || dayjs(dateString).format('YYYYMMDDHHmmss') + Math.random().toString(36).substring(2, 10) 
+                };
+                convertedData[dateString] = [itemWithId];
+              }
+              // その他の予期しない形式の場合は無視するか、エラー処理
+            }
+          }
+        }
+        setProfitData(convertedData);
       }
     } catch (e) {
       console.error('データ読み込み失敗:', e);
@@ -114,10 +152,16 @@ export default function CalendarScreen() {
 
           dayComponent={({ date, state }) => {
             if (!date) return null;
-            const profitItem = profitData[date.dateString];
+            // その日付のすべてのProfitItemを取得
+            const profitItemsForDay = profitData[date.dateString] || [];
             const isSelected = selectedDate === date.dateString;
 
-            const amount = profitItem?.amount;
+            // その日の合計損益を計算
+           const totalAmountForDay = profitItemsForDay.reduce((sum, item) => { 
+              const type = item.type ?? 'income';
+              const signedAmount = type === 'expense' ? -Math.abs(item.amount) : Math.abs(item.amount);
+              return sum + signedAmount;
+            }, 0);
 
             return (
               <TouchableOpacity onPress={() => handleDayPress(date)}>
@@ -129,14 +173,26 @@ export default function CalendarScreen() {
                   <Text style={[styles.dayText, state === 'disabled' && styles.disabledText]}>
                     {date.day}
                   </Text>
-                  {amount !== undefined && (
+                  {/* その日の合計損益を表示 */}
+                  {profitItemsForDay.length > 0 && (
                     <Text style={[
                       styles.profitText,
-                      profitItem?.type === 'expense' ? styles.loss : styles.profit
+                      totalAmountForDay >= 0 ? styles.profit : styles.loss
                     ]}>
-                      {profitItem?.type === 'expense' ? `-${Math.abs(amount)}` : `+${amount}`}
+                      {totalAmountForDay >= 0 ? `+${totalAmountForDay}` : totalAmountForDay}
                     </Text>
                   )}
+                  {/*
+                  // もし個別の項目を表示したい場合（デザインと相談）
+                  {profitItemsForDay.slice(0, 2).map((item) => ( // 例: 上位2件のみ表示
+                    <Text key={item.id} style={[
+                      styles.smallProfitText, // 必要に応じて新しいスタイルを定義
+                      item.type === 'expense' ? styles.loss : styles.profit
+                    ]}>
+                      {item.type === 'expense' ? `-${Math.abs(item.amount)}` : `+${item.amount}`}
+                    </Text>
+                  ))}
+                  */}
                 </View>
               </TouchableOpacity>
             );
@@ -150,7 +206,7 @@ export default function CalendarScreen() {
           </Text>
         </View>
 
-        {/* <AdBanner size="LARGE_BANNER" /> */}
+        <AdBanner size="LARGE_BANNER" />
 
       </ScrollView>
 
@@ -174,7 +230,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   selectedDay: {
-    backgroundColor: '#00adf5',
+    backgroundColor: '#00adf5', // 修正: typo '00rradf5' -> '00adf5'
     borderRadius: 4,
   },
   dayText: {
@@ -185,7 +241,6 @@ const styles = StyleSheet.create({
   },
   profitText: {
     fontSize: 12,
-    marginTop: 2,
     fontWeight: 'bold',
   },
   profit: {
@@ -206,4 +261,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#00adf5',
     borderRadius: 4,
   },
+  // 必要に応じて追加する小額表示用のスタイル
+  smallProfitText: {
+    fontSize: 10,
+  }
 });

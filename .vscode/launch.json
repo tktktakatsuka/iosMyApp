@@ -1,23 +1,13 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-      {
-        "name": "Debug Expo App",
-        "cwd": "${workspaceFolder}",
-        "type": "reactnative",
-        "request": "launch",
-        "platform": "ios", // or "android"
-        "target": "expo",
-        "enableDebug": true
-      },    
-      {
-        "name": "Attach to packager",
-        "cwd": "${workspaceFolder}",
-        "type": "reactnative",
-        "request": "attach",
-        // Expoのデバッグポートにアタッチ
-        "port": 19001
-      }
-    ]
-  }
-  
+  "version": "0.2.0",
+  "configurations": [
+{
+  "type": "expo",
+  "request": "attach",
+  "name": "Debug Expo app",
+  "projectRoot": "${workspaceFolder}",
+  "bundlerPort": "19000", // ★ここをExpo CLIが起動しているポートに合わせる
+  "bundlerHost": "localhost" // ★ここをExpo CLIが起動しているホストに合わせる
+}
+  ]
+}
