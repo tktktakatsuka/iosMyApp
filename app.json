@@ -2,7 +2,7 @@
   "expo": {
     "name": "収支管理アプリ コツコツ貯めよう",
     "slug": "MyApp",
-    "version": "1.1.5",
+    "version": "1.1.6",
     "orientation": "portrait",
     "icon": "./assets/images/profitDataIcon.png",
     "scheme": "myapp",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.s.takatsuka.MyApp",
-      "buildNumber": "5",
+      "buildNumber": "6",
       "infoPlist": {
         "CFBundleDisplayName": "収支管理アプリ コツコツ貯めよう",
         "GADApplicationIdentifier": "ca-app-pub-4855274440005459~3152347682",
